@@ -4,6 +4,7 @@ export const MONTH_DURATION_MS = 3000; // 3 seconds = 1 month
 export const TOTAL_GAME_YEARS = 20;
 export const STARTING_CASH = 100000; // Starting pocket cash in rupees
 export const SAVINGS_INTEREST_RATE = 0.004; // 0.4% per annum
+export const GAME_START_YEAR = 2005; // Game year 1 maps to calendar year 2005
 
 // Asset unlock timeline based on year
 export const ASSET_UNLOCK_TIMELINE: { [key: number]: string[] } = {
@@ -52,4 +53,16 @@ export const getAssetPath = (category: string, assetName: string): string => {
 
   const folder = categoryMap[category] || category;
   return `/data/${folder}/${assetName}.csv`;
+};
+
+// Utility function to get random items from an array
+export const getRandomItems = <T>(array: T[], min: number, max: number): T[] => {
+  const count = Math.floor(Math.random() * (max - min + 1)) + min;
+  const shuffled = [...array].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+};
+
+// Utility function to get a single random item from an array
+export const getRandomItem = <T>(array: T[]): T => {
+  return array[Math.floor(Math.random() * array.length)];
 };

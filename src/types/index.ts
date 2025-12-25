@@ -8,6 +8,14 @@ export interface GameState {
   holdings: Holdings;
   gameStartTime: number;
   isPaused: boolean;
+  selectedAssets?: SelectedAssets;
+}
+
+export interface SelectedAssets {
+  stocks: string[];
+  fundType: 'index' | 'mutual';
+  fundName: string;
+  commodity: string;
 }
 
 export interface SavingsAccount {

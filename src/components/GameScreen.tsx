@@ -30,92 +30,69 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   onSellAsset,
   onTogglePause
 }) => {
-  const [physicalGoldData, setPhysicalGoldData] = useState<AssetData[]>([]);
-  const [digitalGoldData, setDigitalGoldData] = useState<AssetData[]>([]);
+  // Dynamic asset data storage
+  const [assetDataMap, setAssetDataMap] = useState<{ [key: string]: AssetData[] }>({});
   const [fdRates, setFdRates] = useState<FDRate[]>([]);
 
-  // Index Fund & Mutual Fund data
-  const [niftyBeesData, setNiftyBeesData] = useState<AssetData[]>([]);
-
-  // Individual Stocks data
-  const [tataMotorsData, setTataMotorsData] = useState<AssetData[]>([]);
-  const [itcData, setItcData] = useState<AssetData[]>([]);
-  const [bajajData, setBajajData] = useState<AssetData[]>([]);
-  const [relianceData, setRelianceData] = useState<AssetData[]>([]);
-  const [tcsData, setTcsData] = useState<AssetData[]>([]);
-
-  // Crypto data
-  const [btcData, setBtcData] = useState<AssetData[]>([]);
-  const [ethData, setEthData] = useState<AssetData[]>([]);
-
-  // Commodity data
-  const [silverData, setSilverData] = useState<AssetData[]>([]);
-
-  // REIT data
-  const [embassyData, setEmbassyData] = useState<AssetData[]>([]);
-  const [mindspaceData, setMindspaceData] = useState<AssetData[]>([]);
-
   const currentYear = gameState.currentYear;
+  const selectedAssets = gameState.selectedAssets;
 
-  // Load CSV data on component mount
+  // Load CSV data dynamically based on selected assets
   useEffect(() => {
     const loadData = async () => {
+      if (!selectedAssets) return;
+
       try {
+        const dataMap: { [key: string]: AssetData[] } = {};
+
         // Load FD rates
         const fdText = await loadCSV('/data/Fd_Rate/fd_rates.csv');
         setFdRates(parseFDRates(fdText));
 
-        // Load gold data
+        // Load gold data (always available)
         const physicalGoldText = await loadCSV('/data/Gold_Investments/Physical_Gold.csv');
-        setPhysicalGoldData(parseAssetCSV(physicalGoldText));
+        dataMap['Physical_Gold'] = parseAssetCSV(physicalGoldText);
 
         const digitalGoldText = await loadCSV('/data/Gold_Investments/Digital_Gold.csv');
-        setDigitalGoldData(parseAssetCSV(digitalGoldText));
+        dataMap['Digital_Gold'] = parseAssetCSV(digitalGoldText);
 
-        // Load Index Fund data (NIFTYBEES as default)
-        const niftyText = await loadCSV('/data/Index_Funds/NIFTYBEES.csv');
-        setNiftyBeesData(parseAssetCSV(niftyText));
+        // Load selected Index Fund or Mutual Fund
+        const fundFolder = selectedAssets.fundType === 'index' ? 'Index_Funds' : 'Mutual_Funds';
+        const fundText = await loadCSV(`/data/${fundFolder}/${selectedAssets.fundName}.csv`);
+        dataMap[selectedAssets.fundName] = parseAssetCSV(fundText);
 
-        // Load Stock data
-        const tataMotorsText = await loadCSV('/data/Indian_Stocks/TATAMOTORS.csv');
-        setTataMotorsData(parseAssetCSV(tataMotorsText));
+        // Load selected stocks
+        for (const stock of selectedAssets.stocks) {
+          const stockText = await loadCSV(`/data/Indian_Stocks/${stock}.csv`);
+          dataMap[stock] = parseAssetCSV(stockText);
+        }
 
-        const itcText = await loadCSV('/data/Indian_Stocks/ITC.csv');
-        setItcData(parseAssetCSV(itcText));
-
-        const bajajText = await loadCSV('/data/Indian_Stocks/BAJFINANCE.csv');
-        setBajajData(parseAssetCSV(bajajText));
-
-        const relianceText = await loadCSV('/data/Indian_Stocks/RELIANCE.csv');
-        setRelianceData(parseAssetCSV(relianceText));
-
-        const tcsText = await loadCSV('/data/Indian_Stocks/TCS.csv');
-        setTcsData(parseAssetCSV(tcsText));
-
-        // Load Crypto data
+        // Load Crypto data (always BTC and ETH)
         const btcText = await loadCSV('/data/Crypto_Assets/BTC.csv');
-        setBtcData(parseAssetCSV(btcText));
+        dataMap['BTC'] = parseAssetCSV(btcText);
 
         const ethText = await loadCSV('/data/Crypto_Assets/ETH.csv');
-        setEthData(parseAssetCSV(ethText));
+        dataMap['ETH'] = parseAssetCSV(ethText);
 
-        // Load Commodity data (SILVER as default)
-        const silverText = await loadCSV('/data/Commodities/SILVER.csv');
-        setSilverData(parseAssetCSV(silverText));
+        // Load selected commodity
+        const commodityText = await loadCSV(`/data/Commodities/${selectedAssets.commodity}.csv`);
+        dataMap[selectedAssets.commodity] = parseAssetCSV(commodityText);
 
-        // Load REIT data
+        // Load REIT data (always EMBASSY and MINDSPACE)
         const embassyText = await loadCSV('/data/REIT/EMBASSY.csv');
-        setEmbassyData(parseAssetCSV(embassyText));
+        dataMap['EMBASSY'] = parseAssetCSV(embassyText);
 
         const mindspaceText = await loadCSV('/data/REIT/MINDSPACE.csv');
-        setMindspaceData(parseAssetCSV(mindspaceText));
+        dataMap['MINDSPACE'] = parseAssetCSV(mindspaceText);
+
+        setAssetDataMap(dataMap);
       } catch (error) {
         console.error('Error loading CSV data:', error);
       }
     };
 
     loadData();
-  }, []);
+  }, [selectedAssets]);
 
   // Check if asset is unlocked
   const isAssetUnlocked = (assetName: string): boolean => {
@@ -134,9 +111,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     threeYear: getFDRateForYear(fdRates, currentYear, 36)
   };
 
+  // Helper function to get asset data safely
+  const getAssetData = (assetName: string): AssetData[] => {
+    return assetDataMap[assetName] || [];
+  };
+
   // Get asset prices
-  const physicalGoldPrice = getAssetPriceAtDate(physicalGoldData, currentYear, gameState.currentMonth);
-  const digitalGoldPrice = getAssetPriceAtDate(digitalGoldData, currentYear, gameState.currentMonth);
+  const physicalGoldPrice = getAssetPriceAtDate(getAssetData('Physical_Gold'), currentYear, gameState.currentMonth);
+  const digitalGoldPrice = getAssetPriceAtDate(getAssetData('Digital_Gold'), currentYear, gameState.currentMonth);
 
   // Get price history for charts (last 12 months)
   const getRecentPrices = (data: AssetData[], months: number = 12): number[] => {
@@ -156,60 +138,48 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     return prices;
   };
 
-  const physicalGoldHistory = getRecentPrices(physicalGoldData);
-  const digitalGoldHistory = getRecentPrices(digitalGoldData);
+  const physicalGoldHistory = getRecentPrices(getAssetData('Physical_Gold'));
+  const digitalGoldHistory = getRecentPrices(getAssetData('Digital_Gold'));
 
   const previousPhysicalGoldPrice = physicalGoldHistory[physicalGoldHistory.length - 2] || physicalGoldPrice;
   const previousDigitalGoldPrice = digitalGoldHistory[digitalGoldHistory.length - 2] || digitalGoldPrice;
 
-  // Index Fund prices
-  const niftyBeesPrice = getAssetPriceAtDate(niftyBeesData, currentYear, gameState.currentMonth);
-  const niftyBeesHistory = getRecentPrices(niftyBeesData);
-  const previousNiftyBeesPrice = niftyBeesHistory[niftyBeesHistory.length - 2] || niftyBeesPrice;
-
-  // Stock prices
-  const tataMotorsPrice = getAssetPriceAtDate(tataMotorsData, currentYear, gameState.currentMonth);
-  const tataMotorsHistory = getRecentPrices(tataMotorsData);
-  const previousTataMotorsPrice = tataMotorsHistory[tataMotorsHistory.length - 2] || tataMotorsPrice;
-
-  const itcPrice = getAssetPriceAtDate(itcData, currentYear, gameState.currentMonth);
-  const itcHistory = getRecentPrices(itcData);
-  const previousItcPrice = itcHistory[itcHistory.length - 2] || itcPrice;
-
-  const bajajPrice = getAssetPriceAtDate(bajajData, currentYear, gameState.currentMonth);
-  const bajajHistory = getRecentPrices(bajajData);
-  const previousBajajPrice = bajajHistory[bajajHistory.length - 2] || bajajPrice;
-
-  const reliancePrice = getAssetPriceAtDate(relianceData, currentYear, gameState.currentMonth);
-  const relianceHistory = getRecentPrices(relianceData);
-  const previousReliancePrice = relianceHistory[relianceHistory.length - 2] || reliancePrice;
-
-  const tcsPrice = getAssetPriceAtDate(tcsData, currentYear, gameState.currentMonth);
-  const tcsHistory = getRecentPrices(tcsData);
-  const previousTcsPrice = tcsHistory[tcsHistory.length - 2] || tcsPrice;
+  // Fund prices (dynamically selected)
+  const fundPrice = selectedAssets ? getAssetPriceAtDate(getAssetData(selectedAssets.fundName), currentYear, gameState.currentMonth) : 0;
+  const fundHistory = selectedAssets ? getRecentPrices(getAssetData(selectedAssets.fundName)) : [];
+  const previousFundPrice = fundHistory[fundHistory.length - 2] || fundPrice;
 
   // Crypto prices
-  const btcPrice = getAssetPriceAtDate(btcData, currentYear, gameState.currentMonth);
-  const btcHistory = getRecentPrices(btcData);
+  const btcPrice = getAssetPriceAtDate(getAssetData('BTC'), currentYear, gameState.currentMonth);
+  const btcHistory = getRecentPrices(getAssetData('BTC'));
   const previousBtcPrice = btcHistory[btcHistory.length - 2] || btcPrice;
 
-  const ethPrice = getAssetPriceAtDate(ethData, currentYear, gameState.currentMonth);
-  const ethHistory = getRecentPrices(ethData);
+  const ethPrice = getAssetPriceAtDate(getAssetData('ETH'), currentYear, gameState.currentMonth);
+  const ethHistory = getRecentPrices(getAssetData('ETH'));
   const previousEthPrice = ethHistory[ethHistory.length - 2] || ethPrice;
 
-  // Commodity prices
-  const silverPrice = getAssetPriceAtDate(silverData, currentYear, gameState.currentMonth);
-  const silverHistory = getRecentPrices(silverData);
-  const previousSilverPrice = silverHistory[silverHistory.length - 2] || silverPrice;
+  // Commodity prices (dynamically selected)
+  const commodityPrice = selectedAssets ? getAssetPriceAtDate(getAssetData(selectedAssets.commodity), currentYear, gameState.currentMonth) : 0;
+  const commodityHistory = selectedAssets ? getRecentPrices(getAssetData(selectedAssets.commodity)) : [];
+  const previousCommodityPrice = commodityHistory[commodityHistory.length - 2] || commodityPrice;
 
   // REIT prices
-  const embassyPrice = getAssetPriceAtDate(embassyData, currentYear, gameState.currentMonth);
-  const embassyHistory = getRecentPrices(embassyData);
+  const embassyPrice = getAssetPriceAtDate(getAssetData('EMBASSY'), currentYear, gameState.currentMonth);
+  const embassyHistory = getRecentPrices(getAssetData('EMBASSY'));
   const previousEmbassyPrice = embassyHistory[embassyHistory.length - 2] || embassyPrice;
 
-  const mindspacePrice = getAssetPriceAtDate(mindspaceData, currentYear, gameState.currentMonth);
-  const mindspaceHistory = getRecentPrices(mindspaceData);
+  const mindspacePrice = getAssetPriceAtDate(getAssetData('MINDSPACE'), currentYear, gameState.currentMonth);
+  const mindspaceHistory = getRecentPrices(getAssetData('MINDSPACE'));
   const previousMindspacePrice = mindspaceHistory[mindspaceHistory.length - 2] || mindspacePrice;
+
+  // Helper function to get stock price data dynamically
+  const getStockPriceData = (stockName: string) => {
+    const data = getAssetData(stockName);
+    const price = getAssetPriceAtDate(data, currentYear, gameState.currentMonth);
+    const history = getRecentPrices(data);
+    const previousPrice = history[history.length - 2] || price;
+    return { price, history, previousPrice };
+  };
 
   return (
     <div className="game-screen">
@@ -324,17 +294,19 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             <section className="index-section">
               <h2 className="section-title">INDEX FUND</h2>
               <div className="section-cards">
-                <TradeableAssetCard
-                  name="NIFTY 50"
-                  currentPrice={niftyBeesPrice}
-                  previousPrice={previousNiftyBeesPrice}
-                  priceHistory={niftyBeesHistory}
-                  holding={gameState.holdings.indexFund}
-                  pocketCash={gameState.pocketCash}
-                  unit="/share"
-                  onBuy={(qty) => onBuyAsset('indexFund', 'NIFTYBEES', qty, niftyBeesPrice)}
-                  onSell={(qty) => onSellAsset('indexFund', 'NIFTYBEES', qty, niftyBeesPrice)}
-                />
+                {selectedAssets && (
+                  <TradeableAssetCard
+                    name={selectedAssets.fundName}
+                    currentPrice={fundPrice}
+                    previousPrice={previousFundPrice}
+                    priceHistory={fundHistory}
+                    holding={selectedAssets.fundType === 'index' ? gameState.holdings.indexFund : gameState.holdings.mutualFund}
+                    pocketCash={gameState.pocketCash}
+                    unit="/share"
+                    onBuy={(qty) => onBuyAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
+                    onSell={(qty) => onSellAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
+                  />
+                )}
               </div>
             </section>
           </div>
@@ -394,17 +366,19 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             <section className="index-section">
               <h2 className="section-title">INDEX FUND</h2>
               <div className="section-cards">
-                <TradeableAssetCard
-                  name="NIFTY 50"
-                  currentPrice={niftyBeesPrice}
-                  previousPrice={previousNiftyBeesPrice}
-                  priceHistory={niftyBeesHistory}
-                  holding={gameState.holdings.indexFund}
-                  pocketCash={gameState.pocketCash}
-                  unit="/share"
-                  onBuy={(qty) => onBuyAsset('indexFund', 'NIFTYBEES', qty, niftyBeesPrice)}
-                  onSell={(qty) => onSellAsset('indexFund', 'NIFTYBEES', qty, niftyBeesPrice)}
-                />
+                {selectedAssets && (
+                  <TradeableAssetCard
+                    name={selectedAssets.fundName}
+                    currentPrice={fundPrice}
+                    previousPrice={previousFundPrice}
+                    priceHistory={fundHistory}
+                    holding={selectedAssets.fundType === 'index' ? gameState.holdings.indexFund : gameState.holdings.mutualFund}
+                    pocketCash={gameState.pocketCash}
+                    unit="/share"
+                    onBuy={(qty) => onBuyAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
+                    onSell={(qty) => onSellAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
+                  />
+                )}
               </div>
             </section>
           </div>
@@ -469,85 +443,45 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             <section className="index-section">
               <h2 className="section-title">INDEX FUND</h2>
               <div className="section-cards">
-                <TradeableAssetCard
-                  name="NIFTY 50"
-                  currentPrice={niftyBeesPrice}
-                  previousPrice={previousNiftyBeesPrice}
-                  priceHistory={niftyBeesHistory}
-                  holding={gameState.holdings.indexFund}
-                  pocketCash={gameState.pocketCash}
-                  unit="/share"
-                  onBuy={(qty) => onBuyAsset('indexFund', 'NIFTYBEES', qty, niftyBeesPrice)}
-                  onSell={(qty) => onSellAsset('indexFund', 'NIFTYBEES', qty, niftyBeesPrice)}
-                />
+                {selectedAssets && (
+                  <TradeableAssetCard
+                    name={selectedAssets.fundName}
+                    currentPrice={fundPrice}
+                    previousPrice={previousFundPrice}
+                    priceHistory={fundHistory}
+                    holding={selectedAssets.fundType === 'index' ? gameState.holdings.indexFund : gameState.holdings.mutualFund}
+                    pocketCash={gameState.pocketCash}
+                    unit="/share"
+                    onBuy={(qty) => onBuyAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
+                    onSell={(qty) => onSellAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
+                  />
+                )}
               </div>
             </section>
 
-            {/* INDIVIDUAL STOCKS Section */}
-            {isAssetUnlocked('INDIAN_STOCKS') && (
+            {/* INDIVIDUAL STOCKS Section - Dynamic */}
+            {isAssetUnlocked('INDIAN_STOCKS') && selectedAssets && (
               <section className="stocks-section">
                 <h2 className="section-title">INDIVIDUAL STOCKS</h2>
                 <div className="section-cards">
-                  <TradeableAssetCard
-                    name="TATA MOTOR"
-                    currentPrice={tataMotorsPrice}
-                    previousPrice={previousTataMotorsPrice}
-                    priceHistory={tataMotorsHistory}
-                    holding={gameState.holdings.stocks['TATAMOTORS'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset('stocks', 'TATAMOTORS', qty, tataMotorsPrice)}
-                    onSell={(qty) => onSellAsset('stocks', 'TATAMOTORS', qty, tataMotorsPrice)}
-                    isStock={true}
-                  />
-                  <TradeableAssetCard
-                    name="ITC"
-                    currentPrice={itcPrice}
-                    previousPrice={previousItcPrice}
-                    priceHistory={itcHistory}
-                    holding={gameState.holdings.stocks['ITC'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset('stocks', 'ITC', qty, itcPrice)}
-                    onSell={(qty) => onSellAsset('stocks', 'ITC', qty, itcPrice)}
-                    isStock={true}
-                  />
-                  <TradeableAssetCard
-                    name="BAJAJ"
-                    currentPrice={bajajPrice}
-                    previousPrice={previousBajajPrice}
-                    priceHistory={bajajHistory}
-                    holding={gameState.holdings.stocks['BAJFINANCE'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset('stocks', 'BAJFINANCE', qty, bajajPrice)}
-                    onSell={(qty) => onSellAsset('stocks', 'BAJFINANCE', qty, bajajPrice)}
-                    isStock={true}
-                  />
-                  <TradeableAssetCard
-                    name="RELIANCE IND."
-                    currentPrice={reliancePrice}
-                    previousPrice={previousReliancePrice}
-                    priceHistory={relianceHistory}
-                    holding={gameState.holdings.stocks['RELIANCE'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset('stocks', 'RELIANCE', qty, reliancePrice)}
-                    onSell={(qty) => onSellAsset('stocks', 'RELIANCE', qty, reliancePrice)}
-                    isStock={true}
-                  />
-                  <TradeableAssetCard
-                    name="TCS"
-                    currentPrice={tcsPrice}
-                    previousPrice={previousTcsPrice}
-                    priceHistory={tcsHistory}
-                    holding={gameState.holdings.stocks['TCS'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset('stocks', 'TCS', qty, tcsPrice)}
-                    onSell={(qty) => onSellAsset('stocks', 'TCS', qty, tcsPrice)}
-                    isStock={true}
-                  />
+                  {selectedAssets.stocks.map((stockName) => {
+                    const stockData = getStockPriceData(stockName);
+                    return (
+                      <TradeableAssetCard
+                        key={stockName}
+                        name={stockName}
+                        currentPrice={stockData.price}
+                        previousPrice={stockData.previousPrice}
+                        priceHistory={stockData.history}
+                        holding={gameState.holdings.stocks[stockName] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
+                        pocketCash={gameState.pocketCash}
+                        unit="/share"
+                        onBuy={(qty) => onBuyAsset('stocks', stockName, qty, stockData.price)}
+                        onSell={(qty) => onSellAsset('stocks', stockName, qty, stockData.price)}
+                        isStock={true}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -583,21 +517,21 @@ export const GameScreen: React.FC<GameScreenProps> = ({
               </section>
             )}
 
-            {/* COMMODITY Section */}
-            {isAssetUnlocked('COMMODITY') && (
+            {/* COMMODITY Section - Dynamic */}
+            {isAssetUnlocked('COMMODITY') && selectedAssets && (
               <section className="commodity-section">
                 <h2 className="section-title">COMMODITY</h2>
                 <div className="section-cards">
                   <TradeableAssetCard
-                    name="SILVER"
-                    currentPrice={silverPrice}
-                    previousPrice={previousSilverPrice}
-                    priceHistory={silverHistory}
+                    name={selectedAssets.commodity}
+                    currentPrice={commodityPrice}
+                    previousPrice={previousCommodityPrice}
+                    priceHistory={commodityHistory}
                     holding={gameState.holdings.commodity}
                     pocketCash={gameState.pocketCash}
                     unit="/oz"
-                    onBuy={(qty) => onBuyAsset('commodity', 'SILVER', qty, silverPrice)}
-                    onSell={(qty) => onSellAsset('commodity', 'SILVER', qty, silverPrice)}
+                    onBuy={(qty) => onBuyAsset('commodity', selectedAssets.commodity, qty, commodityPrice)}
+                    onSell={(qty) => onSellAsset('commodity', selectedAssets.commodity, qty, commodityPrice)}
                   />
                 </div>
               </section>

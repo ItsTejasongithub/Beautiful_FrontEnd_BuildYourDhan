@@ -1,6 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { GameState, FixedDeposit, AssetHolding } from '../types';
-import { MONTH_DURATION_MS, STARTING_CASH, SAVINGS_INTEREST_RATE, TOTAL_GAME_YEARS } from '../utils/constants';
+import { GameState, FixedDeposit, AssetHolding, SelectedAssets } from '../types';
+import {
+  MONTH_DURATION_MS,
+  STARTING_CASH,
+  SAVINGS_INTEREST_RATE,
+  TOTAL_GAME_YEARS,
+  AVAILABLE_STOCKS,
+  AVAILABLE_INDEX_FUNDS,
+  AVAILABLE_MUTUAL_FUNDS,
+  AVAILABLE_COMMODITIES,
+  getRandomItems,
+  getRandomItem
+} from '../utils/constants';
 
 const initialHoldings = {
   physicalGold: { quantity: 0, avgPrice: 0, totalInvested: 0 },
@@ -72,6 +83,21 @@ export const useGameState = () => {
   }, [gameState.mode, gameState.isPaused]);
 
   const startSoloGame = useCallback(() => {
+    // Randomly select assets for this game
+    const selectedStocks = getRandomItems(AVAILABLE_STOCKS, 2, 5);
+    const fundType = Math.random() > 0.5 ? 'index' : 'mutual';
+    const fundName = fundType === 'index'
+      ? getRandomItem(AVAILABLE_INDEX_FUNDS)
+      : getRandomItem(AVAILABLE_MUTUAL_FUNDS);
+    const selectedCommodity = getRandomItem(AVAILABLE_COMMODITIES);
+
+    const selectedAssets: SelectedAssets = {
+      stocks: selectedStocks,
+      fundType,
+      fundName,
+      commodity: selectedCommodity
+    };
+
     setGameState({
       mode: 'solo',
       currentYear: 1,
@@ -81,7 +107,8 @@ export const useGameState = () => {
       fixedDeposits: [],
       holdings: initialHoldings,
       gameStartTime: Date.now(),
-      isPaused: false
+      isPaused: false,
+      selectedAssets
     });
   }, []);
 

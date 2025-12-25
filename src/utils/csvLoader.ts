@@ -1,4 +1,5 @@
 import { AssetData, FDRate } from '../types';
+import { GAME_START_YEAR } from './constants';
 
 export const loadCSV = async (path: string): Promise<string> => {
   const response = await fetch(path);
@@ -58,12 +59,16 @@ export const parseFDRates = (csvText: string): FDRate[] => {
   return rates;
 };
 
-export const getAssetPriceAtDate = (assetData: AssetData[], year: number, month: number): number => {
+export const getAssetPriceAtDate = (assetData: AssetData[], gameYear: number, month: number): number => {
   if (!assetData || assetData.length === 0) {
     return 0;
   }
 
-  const targetDate = new Date(year, month - 1);
+  // Map game year (1-20) to actual calendar year
+  // Game starts in 2005, so gameYear 1 = 2005, gameYear 2 = 2006, etc.
+  const actualYear = GAME_START_YEAR + gameYear - 1;
+
+  const targetDate = new Date(actualYear, month - 1);
 
   let closestData = assetData[0];
   let minDiff = Number.MAX_VALUE;
@@ -81,7 +86,7 @@ export const getAssetPriceAtDate = (assetData: AssetData[], year: number, month:
   return closestData?.price || 0;
 };
 
-export const getFDRateForYear = (fdRates: FDRate[], year: number, duration: 3 | 12 | 36): number => {
+export const getFDRateForYear = (fdRates: FDRate[], gameYear: number, duration: 3 | 12 | 36): number => {
   if (!fdRates || fdRates.length === 0) {
     // Default rates if no data available
     if (duration === 3) return 6.9;
@@ -89,7 +94,12 @@ export const getFDRateForYear = (fdRates: FDRate[], year: number, duration: 3 | 
     return 7.5;
   }
 
-  const rate = fdRates.find(r => r.year <= year) || fdRates[fdRates.length - 1];
+  // Map game year to actual calendar year
+  const actualYear = GAME_START_YEAR + gameYear - 1;
+
+  // Find the most recent rate that applies to this year
+  const sortedRates = [...fdRates].sort((a, b) => b.year - a.year);
+  const rate = sortedRates.find(r => r.year <= actualYear) || fdRates[fdRates.length - 1];
 
   if (!rate) {
     // Fallback to default rates
