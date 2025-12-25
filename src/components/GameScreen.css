@@ -1,0 +1,356 @@
+.game-screen {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(135deg,
+    #FF9933 0%,
+    #FFFFFF 25%,
+    #138808 50%,
+    #FFFFFF 75%,
+    #FF9933 100%
+  );
+  position: relative;
+}
+
+.game-screen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/500-currency-note.png');
+  background-repeat: repeat;
+  background-size: 350px auto;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+  transform: rotate(-5deg);
+  animation: floatNotes 60s linear infinite;
+}
+
+@keyframes floatNotes {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 1000px 1000px;
+  }
+}
+
+.sidebar {
+  width: 300px;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-right: 3px solid #FF9933;
+  position: relative;
+  z-index: 1;
+}
+
+.game-logo {
+  font-size: 70px;
+  font-weight: bold;
+  line-height: 1.1;
+  color: #FF9933;
+  margin: 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.game-info {
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 15px 0;
+}
+
+.quote {
+  font-size: 20px;
+  line-height: 1.5;
+  font-style: italic;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.pocket-cash {
+  background: linear-gradient(135deg, #FF9933, #FF6600);
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.pocket-label {
+  font-size: px;
+  opacity: 0.9;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.pocket-amount {
+  font-size: 20px;
+}
+
+.leaderboard {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.leaderboard h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #FF9933;
+}
+
+.leaderboard ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+}
+
+.leaderboard li {
+  margin-bottom: 5px;
+}
+
+.game-timer {
+  background: rgba(19, 136, 8, 0.3);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  border: 2px solid #138808;
+  margin-top: auto;
+}
+
+.game-timer div {
+  margin-bottom: 5px;
+}
+
+.game-timer div:last-child {
+  margin-bottom: 0;
+}
+
+.pause-button {
+  width: 100%;
+  padding: 15px;
+  font-size: 18px;
+  font-weight: bold;
+  background: linear-gradient(135deg, #FF9933, #FF6600);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.pause-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 153, 51, 0.4);
+}
+
+.pause-button:active {
+  transform: translateY(0);
+}
+
+.main-content {
+  flex: 1;
+  padding: 10px;
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* Year-specific layouts for precise control */
+
+/* Year 1 Layout */
+.year-1-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Year 2 Layout */
+.year-2-layout {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Year 3 Layout */
+.year-3-layout {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 30px;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+}
+
+/* Year 4 Layout */
+.year-4-layout {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  overflow: hidden;
+}
+
+/* Year 5 Layout */
+.year-5-layout {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+/* Year 6 Layout */
+.year-6-layout {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+/* Year 7 Layout */
+.year-7-layout {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+/* Year 8+ Layout */
+.year-8-layout,
+.year-9-layout,
+.year-10-layout,
+.year-11-layout,
+.year-12-layout,
+.year-13-layout,
+.year-14-layout,
+.year-15-layout,
+.year-16-layout,
+.year-17-layout,
+.year-18-layout,
+.year-19-layout,
+.year-20-layout {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+/* Common section styling */
+.banking-section,
+.gold-section,
+.index-section,
+.stocks-section,
+.crypto-section,
+.commodity-section,
+.reit-section {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.35);
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  flex: 0 1 auto;
+  margin-bottom: 1px;
+  min-width: fit-content;
+}
+
+.section-cards {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.section-title {
+  width: 100%;
+  font-size: 14px;
+  font-weight: 700;
+  color: #FEFDF8;
+  margin: 0 0 12px 0;
+  padding: 6px 0;
+  background: linear-gradient(135deg, #138808, #0f6606);
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.stocks-grid,
+.crypto-grid,
+.reit-grid {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.unlock-notice {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
