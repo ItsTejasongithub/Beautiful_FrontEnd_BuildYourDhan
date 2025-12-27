@@ -547,7 +547,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             <div className="net-worth">
               <div className="net-worth-label">Net Worth</div>
               <div className="net-worth-amount">₹{formatCurrency(netWorth)}</div>
-              <div className="net-worth-pl" style={{ color: gainFromStart >= 0 ? '#7efc4cff' : 'rgba(255, 68, 68, 1)' }}>
+              <div className="net-worth-pl" style={{ color: gainFromStart >= 0 ? '#48ff00ff' : 'rgba(208, 0, 0, 1)' }}>
                 {gainFromStart >= 0 ? '+' : ''}₹{formatCurrency(Math.abs(gainFromStart))} ({gainFromStart >= 0 ? '+' : ''}{gainPercentage.toFixed(2)}%)
               </div>
 

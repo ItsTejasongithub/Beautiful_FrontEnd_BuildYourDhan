@@ -96,7 +96,7 @@
 }
 
 .net-worth {
-  background: linear-gradient(135deg, #1B5E20, #A67C00);
+  background: linear-gradient(135deg, #1865ff, #ffc001);
   padding: 10px;
   border-radius: 8px;
   text-align: center;
@@ -121,7 +121,7 @@
   opacity: 9;
   margin-bottom: 1px;
   font-weight: bold;
-  color: #F5E6A8;
+  color: #ffcc00;
 }
 
 .net-worth-amount {

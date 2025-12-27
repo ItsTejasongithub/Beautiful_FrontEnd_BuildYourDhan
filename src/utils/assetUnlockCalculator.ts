@@ -162,11 +162,20 @@ export const getLatestAssetYear = (categories: AssetCategory[]): number => {
 
 /**
  * Calculate game start year based on selected categories
- * Formula: latestAssetYear + 5 (buffer) - 20 (game duration) + 1
+ * Ensures game ends by 2025 (max data year)
  */
 export const calculateGameStartYear = (categories: AssetCategory[]): number => {
+  const MAX_DATA_YEAR = 2025; // CSV data only goes up to 2025
+  const GAME_DURATION = 20;
+
+  // Game must end by 2025, so start year = 2025 - 20 + 1 = 2006
+  const maxStartYear = MAX_DATA_YEAR - GAME_DURATION + 1;
+
   const latestYear = getLatestAssetYear(categories);
-  return latestYear + 5 - 20 + 1;
+  const calculatedStartYear = latestYear + 5 - GAME_DURATION + 1;
+
+  // Return the minimum to ensure we don't exceed 2025
+  return Math.min(calculatedStartYear, maxStartYear);
 };
 
 /**
