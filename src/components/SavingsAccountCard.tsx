@@ -17,6 +17,13 @@ export const SavingsAccountCard: React.FC<SavingsAccountCardProps> = ({
   const [showInput, setShowInput] = useState(false);
   const [inputAmount, setInputAmount] = useState('');
   const [operation, setOperation] = useState<'deposit' | 'withdraw'>('deposit');
+  const [isShaking, setIsShaking] = useState(false);
+
+  // Trigger shake animation
+  const triggerShake = () => {
+    setIsShaking(true);
+    setTimeout(() => setIsShaking(false), 500);
+  };
 
   const handleDeposit = () => {
     setOperation('deposit');
@@ -32,7 +39,7 @@ export const SavingsAccountCard: React.FC<SavingsAccountCardProps> = ({
 
   const handleMax = () => {
     const maxAmount = operation === 'deposit' ? pocketCash : balance;
-    setInputAmount(maxAmount.toFixed(0));
+    setInputAmount(Math.floor(maxAmount).toString());
   };
 
   const handleConfirm = () => {
@@ -40,8 +47,16 @@ export const SavingsAccountCard: React.FC<SavingsAccountCardProps> = ({
     if (isNaN(amount) || amount <= 0) return;
 
     if (operation === 'deposit') {
+      if (amount > pocketCash) {
+        triggerShake();
+        return;
+      }
       onDeposit(amount);
     } else {
+      if (amount > balance) {
+        triggerShake();
+        return;
+      }
       onWithdraw(amount);
     }
 
@@ -50,8 +65,8 @@ export const SavingsAccountCard: React.FC<SavingsAccountCardProps> = ({
   };
 
   return (
-    <div className="asset-card savings-card">
-      <h3 className="card-title">SAVING AC</h3>
+    <div className={`asset-card savings-card ${isShaking ? 'shake' : ''}`}>
+      <h3 className="card-title">SAVING ACCOUNT</h3>
 
       <div className="balance-display">
         <div className="balance-label">Balance</div>
@@ -95,7 +110,6 @@ export const SavingsAccountCard: React.FC<SavingsAccountCardProps> = ({
         </div>
       )}
 
-      <div className="interest-info">0.4% PA</div>
     </div>
   );
 };

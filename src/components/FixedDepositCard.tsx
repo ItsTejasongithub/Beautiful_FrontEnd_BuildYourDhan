@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FixedDeposit } from '../types';
 import './AssetCard.css';
+import { ConfirmModal } from './ConfirmModal';
 
 interface FixedDepositCardProps {
   fixedDeposits: FixedDeposit[];
@@ -22,10 +23,24 @@ export const FixedDepositCard: React.FC<FixedDepositCardProps> = ({
   const [showInput, setShowInput] = useState(false);
   const [inputAmount, setInputAmount] = useState('');
   const [selectedDuration, setSelectedDuration] = useState<3 | 12 | 36>(12);
+  const [isShaking, setIsShaking] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [fdToBreak, setFdToBreak] = useState<string | null>(null);
+
+  // Trigger shake animation
+  const triggerShake = () => {
+    setIsShaking(true);
+    setTimeout(() => setIsShaking(false), 500);
+  };
 
   const handleCreateFD = () => {
     const amount = parseFloat(inputAmount);
-    if (isNaN(amount) || amount <= 0 || amount > pocketCash) return;
+    if (isNaN(amount) || amount <= 0) return;
+
+    if (amount > pocketCash) {
+      triggerShake();
+      return;
+    }
 
     const rate =
       selectedDuration === 3 ? currentRates.threeMonth :
@@ -38,11 +53,29 @@ export const FixedDepositCard: React.FC<FixedDepositCardProps> = ({
   };
 
   const handleMax = () => {
-    setInputAmount(pocketCash.toFixed(0));
+    setInputAmount(Math.floor(pocketCash).toString());
+  };
+
+  const handleBreakClick = (fdId: string) => {
+    setFdToBreak(fdId);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmBreak = () => {
+    if (fdToBreak) {
+      onBreak(fdToBreak);
+    }
+    setShowConfirmModal(false);
+    setFdToBreak(null);
+  };
+
+  const handleCancelBreak = () => {
+    setShowConfirmModal(false);
+    setFdToBreak(null);
   };
 
   return (
-    <div className="asset-card fd-card">
+    <div className={`asset-card fd-card ${isShaking ? 'shake' : ''}`}>
       <h3 className="card-title">FIXED DEPOSIT</h3>
 
       <div className="fd-rates">
@@ -140,11 +173,7 @@ export const FixedDepositCard: React.FC<FixedDepositCardProps> = ({
             ) : (
               <button
                 className="break-btn"
-                onClick={() => {
-                  if (window.confirm('Breaking FD early will incur 1% penalty. Continue?')) {
-                    onBreak(fd.id);
-                  }
-                }}
+                onClick={() => handleBreakClick(fd.id)}
               >
                 Break
               </button>
@@ -156,6 +185,14 @@ export const FixedDepositCard: React.FC<FixedDepositCardProps> = ({
       {fixedDeposits.length >= 3 && (
         <div className="max-fd-notice">Maximum 3 FDs reached</div>
       )}
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        title="Break Fixed Deposit?"
+        message="Breaking FD early will incur 1% penalty. Continue?"
+        onConfirm={handleConfirmBreak}
+        onCancel={handleCancelBreak}
+      />
     </div>
   );
 };

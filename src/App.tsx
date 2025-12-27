@@ -1,13 +1,15 @@
-import React from 'react';
 import { useGameState } from './hooks/useGameState';
 import { MainMenu } from './components/MainMenu';
 import { GameScreen } from './components/GameScreen';
+import { AdminSettingsPanel } from './components/AdminSettingsPanel';
 import './App.css';
 
 function App() {
   const {
     gameState,
+    openSettings,
     startSoloGame,
+    backToMenu,
     depositToSavings,
     withdrawFromSavings,
     createFixedDeposit,
@@ -21,7 +23,17 @@ function App() {
   return (
     <div className="app">
       {gameState.mode === 'menu' && (
-        <MainMenu onStartSolo={startSoloGame} />
+        <MainMenu
+          onStartSolo={() => startSoloGame()}
+          onOpenSettings={openSettings}
+        />
+      )}
+
+      {gameState.mode === 'settings' && (
+        <AdminSettingsPanel
+          onStartGame={(settings) => startSoloGame(settings)}
+          onBack={backToMenu}
+        />
       )}
 
       {gameState.mode === 'solo' && (

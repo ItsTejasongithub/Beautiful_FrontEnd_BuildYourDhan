@@ -12,7 +12,10 @@
       "Bash(git commit:*)",
       "Bash(git branch:*)",
       "Bash(git remote add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npm run build:*)",
+      "Bash(dir /B \"C:\\\\Users\\\\dell\\\\Downloads\\\\BeautifulGameDesgin\\\\GameDesgin\\\\public\\\\data\")",
+      "Bash(dir:*)"
     ]
   }
 }

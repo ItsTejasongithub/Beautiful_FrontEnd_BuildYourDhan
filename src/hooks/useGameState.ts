@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { GameState, FixedDeposit, AssetHolding, SelectedAssets } from '../types';
+import { GameState, FixedDeposit, AssetHolding, SelectedAssets, AdminSettings } from '../types';
 import {
   MONTH_DURATION_MS,
   STARTING_CASH,
@@ -9,9 +9,11 @@ import {
   AVAILABLE_INDEX_FUNDS,
   AVAILABLE_MUTUAL_FUNDS,
   AVAILABLE_COMMODITIES,
+  FINANCIAL_QUOTES,
   getRandomItems,
   getRandomItem
 } from '../utils/constants';
+import { generateAssetUnlockSchedule } from '../utils/assetUnlockCalculator';
 
 const initialHoldings = {
   physicalGold: { quantity: 0, avgPrice: 0, totalInvested: 0 },
@@ -82,13 +84,49 @@ export const useGameState = () => {
     return () => clearInterval(interval);
   }, [gameState.mode, gameState.isPaused]);
 
-  const startSoloGame = useCallback(() => {
+  const openSettings = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      mode: 'settings'
+    }));
+  }, []);
+
+  const startSoloGame = useCallback((adminSettings?: AdminSettings) => {
     // Randomly select assets for this game
     const selectedStocks = getRandomItems(AVAILABLE_STOCKS, 2, 5);
-    const fundType = Math.random() > 0.5 ? 'index' : 'mutual';
-    const fundName = fundType === 'index'
-      ? getRandomItem(AVAILABLE_INDEX_FUNDS)
-      : getRandomItem(AVAILABLE_MUTUAL_FUNDS);
+
+    // When using admin settings, select earliest available fund based on selected categories
+    let fundType: 'index' | 'mutual';
+    let fundName: string;
+
+    if (adminSettings) {
+      const hasFunds = adminSettings.selectedCategories.includes('FUNDS');
+
+      if (hasFunds) {
+        // Randomly decide between index or mutual fund
+        const useIndexFund = Math.random() > 0.5;
+        fundType = useIndexFund ? 'index' : 'mutual';
+
+        if (useIndexFund) {
+          fundName = 'NIFTYBEES'; // Earliest index fund (2009)
+        } else {
+          fundName = 'SBI_Bluechip'; // Earliest mutual fund (2018)
+        }
+      } else {
+        // Fallback to random if FUNDS not selected
+        fundType = Math.random() > 0.5 ? 'index' : 'mutual';
+        fundName = fundType === 'index'
+          ? getRandomItem(AVAILABLE_INDEX_FUNDS)
+          : getRandomItem(AVAILABLE_MUTUAL_FUNDS);
+      }
+    } else {
+      // Random selection for quick start
+      fundType = Math.random() > 0.5 ? 'index' : 'mutual';
+      fundName = fundType === 'index'
+        ? getRandomItem(AVAILABLE_INDEX_FUNDS)
+        : getRandomItem(AVAILABLE_MUTUAL_FUNDS);
+    }
+
     const selectedCommodity = getRandomItem(AVAILABLE_COMMODITIES);
 
     const selectedAssets: SelectedAssets = {
@@ -97,6 +135,14 @@ export const useGameState = () => {
       fundName,
       commodity: selectedCommodity
     };
+
+    // Generate asset unlock schedule if admin settings are provided
+    const assetUnlockSchedule = adminSettings
+      ? generateAssetUnlockSchedule(adminSettings.selectedCategories, adminSettings.gameStartYear)
+      : undefined;
+
+    // Shuffle quotes for this game - one unique quote per year
+    const shuffledQuotes = [...FINANCIAL_QUOTES].sort(() => Math.random() - 0.5);
 
     setGameState({
       mode: 'solo',
@@ -108,7 +154,24 @@ export const useGameState = () => {
       holdings: initialHoldings,
       gameStartTime: Date.now(),
       isPaused: false,
-      selectedAssets
+      selectedAssets,
+      adminSettings,
+      assetUnlockSchedule,
+      yearlyQuotes: shuffledQuotes
+    });
+  }, []);
+
+  const backToMenu = useCallback(() => {
+    setGameState({
+      mode: 'menu',
+      currentYear: 1,
+      currentMonth: 1,
+      pocketCash: STARTING_CASH,
+      savingsAccount: { balance: 0, interestRate: SAVINGS_INTEREST_RATE },
+      fixedDeposits: [],
+      holdings: initialHoldings,
+      gameStartTime: 0,
+      isPaused: false
     });
   }, []);
 
@@ -187,7 +250,6 @@ export const useGameState = () => {
       const fd = prev.fixedDeposits.find(f => f.id === fdId);
       if (!fd) return prev;
 
-      const monthsElapsed = (prev.currentYear - fd.startYear) * 12 + (prev.currentMonth - fd.startMonth);
       const penalty = 0.01; // 1% penalty
       const returnAmount = fd.amount * (1 - penalty);
 
@@ -292,7 +354,9 @@ export const useGameState = () => {
 
   return {
     gameState,
+    openSettings,
     startSoloGame,
+    backToMenu,
     depositToSavings,
     withdrawFromSavings,
     createFixedDeposit,

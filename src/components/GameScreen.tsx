@@ -4,7 +4,8 @@ import { SavingsAccountCard } from './SavingsAccountCard';
 import { FixedDepositCard } from './FixedDepositCard';
 import { TradeableAssetCard } from './TradeableAssetCard';
 import { loadCSV, parseAssetCSV, parseFDRates, getAssetPriceAtDate, getFDRateForYear } from '../utils/csvLoader';
-import { ASSET_UNLOCK_TIMELINE } from '../utils/constants';
+import { ASSET_UNLOCK_TIMELINE, STARTING_CASH } from '../utils/constants';
+import { ASSET_TIMELINE_DATA } from '../utils/assetUnlockCalculator';
 import './GameScreen.css';
 
 interface GameScreenProps {
@@ -30,12 +31,34 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   onSellAsset,
   onTogglePause
 }) => {
+  // Helper function to format numbers with commas (Indian numbering system)
+  const formatCurrency = (amount: number): string => {
+    const [integerPart, decimalPart] = amount.toFixed(2).split('.');
+
+    // Indian numbering: last 3 digits, then groups of 2
+    let lastThree = integerPart.substring(integerPart.length - 3);
+    const otherNumbers = integerPart.substring(0, integerPart.length - 3);
+
+    if (otherNumbers !== '') {
+      lastThree = ',' + lastThree;
+    }
+
+    const formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree;
+    return `${formatted}.${decimalPart}`;
+  };
+
   // Dynamic asset data storage
   const [assetDataMap, setAssetDataMap] = useState<{ [key: string]: AssetData[] }>({});
   const [fdRates, setFdRates] = useState<FDRate[]>([]);
 
   const currentYear = gameState.currentYear;
   const selectedAssets = gameState.selectedAssets;
+  const adminSettings = gameState.adminSettings;
+
+  // Calculate calendar year if admin settings are present
+  const calendarYear = adminSettings
+    ? adminSettings.gameStartYear + currentYear - 1
+    : 2005 + currentYear - 1;
 
   // Load CSV data dynamically based on selected assets
   useEffect(() => {
@@ -94,21 +117,131 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     loadData();
   }, [selectedAssets]);
 
-  // Check if asset is unlocked
-  const isAssetUnlocked = (assetName: string): boolean => {
+  // Check if asset category is unlocked based on admin settings or default timeline
+  const isAssetCategoryUnlocked = (checkName: string): boolean => {
+    // If admin settings exist, use the unlock schedule
+    if (gameState.assetUnlockSchedule) {
+      // Map common names to asset types in the schedule
+      const assetTypeMap: { [key: string]: string[] } = {
+        'SAVINGS_AC': ['SAVINGS_AC'],
+        'FIXED_DEPOSIT': ['FD'],
+        'PHYSICAL_GOLD': ['Physical_Gold'],
+        'DIGITAL_GOLD': ['Digital_Gold'],
+        'INDIAN_STOCKS': ['STOCKS'],
+        'BTC': ['BTC'],
+        'ETH': ['ETH'],
+        'COMMODITY': ['SILVER', 'CRUDEOIL_WTI', 'COPPER', 'WHEAT', 'BRENT'],
+        'EMBASSY': ['EMBASSY'],
+        'MINDSPACE': ['MINDSPACE'],
+        'INDEX_FUND': ['NIFTYBEES', 'UTINIFTETF', 'HDFCNIFETF', 'SETFNIF50', 'SBI_Bluechip', 'ICICI_Bluechip', 'Axis_Midcap', 'Kotak_Emerging', 'PGIM_Midcap', 'Nippon_SmallCap'],
+        'MUTUAL_FUND': ['NIFTYBEES', 'UTINIFTETF', 'HDFCNIFETF', 'SETFNIF50', 'SBI_Bluechip', 'ICICI_Bluechip', 'Axis_Midcap', 'Kotak_Emerging', 'PGIM_Midcap', 'Nippon_SmallCap']
+      };
+
+      const assetTypesToCheck = assetTypeMap[checkName] || [checkName];
+
+      for (let year = 1; year <= currentYear; year++) {
+        const unlocks = gameState.assetUnlockSchedule[year];
+        if (unlocks) {
+          for (const unlock of unlocks) {
+            // Check if this asset type matches
+            if (assetTypesToCheck.includes(unlock.assetType)) {
+              // CRITICAL: For INDEX_FUND and MUTUAL_FUND, check the selected fund's timeline
+              if ((checkName === 'INDEX_FUND' || checkName === 'MUTUAL_FUND') && selectedAssets) {
+                const fundTimeline = ASSET_TIMELINE_DATA[selectedAssets.fundName];
+                if (fundTimeline) {
+                  // Check year first, then month if year matches
+                  if (calendarYear > fundTimeline.firstYear) {
+                    return true;
+                  } else if (calendarYear === fundTimeline.firstYear && gameState.currentMonth >= fundTimeline.firstMonth) {
+                    return true;
+                  } else {
+                    return false; // Data not available yet
+                  }
+                }
+              }
+
+              // CRITICAL: Also verify calendar year AND month has reached the asset's availability
+              const assetTimeline = ASSET_TIMELINE_DATA[unlock.assetType];
+              if (assetTimeline) {
+                // Check year first, then month if year matches
+                if (calendarYear > assetTimeline.firstYear) {
+                  return true;
+                } else if (calendarYear === assetTimeline.firstYear && gameState.currentMonth >= assetTimeline.firstMonth) {
+                  return true;
+                } else {
+                  return false; // Data not available yet
+                }
+              } else {
+                // If no timeline data exists, allow unlock (backward compatibility)
+                return true;
+              }
+            }
+            // Check if category matches (for STOCKS, INDEX_FUNDS, etc.)
+            if (unlock.assetType === 'STOCKS' && checkName === 'INDIAN_STOCKS') {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    // Fallback to default timeline if no admin settings
     for (const [year, assets] of Object.entries(ASSET_UNLOCK_TIMELINE)) {
-      if (assets.includes(assetName) && currentYear >= parseInt(year)) {
+      if (assets.includes(checkName) && currentYear >= parseInt(year)) {
+        // CRITICAL: Also check if calendar year has reached the asset's data availability
+        const assetTypeMap: { [key: string]: string } = {
+          'PHYSICAL_GOLD': 'Physical_Gold',
+          'DIGITAL_GOLD': 'Digital_Gold',
+          'BTC': 'BTC',
+          'ETH': 'ETH'
+        };
+
+        // For INDEX_FUND and MUTUAL_FUND, check the selected fund's timeline
+        if ((checkName === 'INDEX_FUND' || checkName === 'MUTUAL_FUND') && selectedAssets) {
+          const fundTimeline = ASSET_TIMELINE_DATA[selectedAssets.fundName];
+          if (fundTimeline) {
+            // Check year first, then month if year matches
+            if (calendarYear > fundTimeline.firstYear) {
+              return true;
+            } else if (calendarYear === fundTimeline.firstYear && gameState.currentMonth >= fundTimeline.firstMonth) {
+              return true;
+            } else {
+              return false; // Data not available yet
+            }
+          }
+        }
+
+        const assetType = assetTypeMap[checkName];
+        if (assetType) {
+          const assetTimeline = ASSET_TIMELINE_DATA[assetType];
+          if (assetTimeline) {
+            // Check year first, then month if year matches
+            if (calendarYear > assetTimeline.firstYear) {
+              return true;
+            } else if (calendarYear === assetTimeline.firstYear && gameState.currentMonth >= assetTimeline.firstMonth) {
+              return true;
+            } else {
+              return false; // Data not available yet
+            }
+          }
+        }
+
+        // For assets without timeline data (like SAVINGS_AC, FIXED_DEPOSIT), allow unlock
         return true;
       }
     }
     return false;
   };
 
-  // Get current FD rates
+  // Legacy function name for backward compatibility
+  const isAssetUnlocked = isAssetCategoryUnlocked;
+
+  // Get current FD rates (use calendar year)
   const currentFDRates = {
-    threeMonth: getFDRateForYear(fdRates, currentYear, 3),
-    oneYear: getFDRateForYear(fdRates, currentYear, 12),
-    threeYear: getFDRateForYear(fdRates, currentYear, 36)
+    threeMonth: getFDRateForYear(fdRates, calendarYear, 3),
+    oneYear: getFDRateForYear(fdRates, calendarYear, 12),
+    threeYear: getFDRateForYear(fdRates, calendarYear, 36)
   };
 
   // Helper function to get asset data safely
@@ -116,23 +249,23 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     return assetDataMap[assetName] || [];
   };
 
-  // Get asset prices
-  const physicalGoldPrice = getAssetPriceAtDate(getAssetData('Physical_Gold'), currentYear, gameState.currentMonth);
-  const digitalGoldPrice = getAssetPriceAtDate(getAssetData('Digital_Gold'), currentYear, gameState.currentMonth);
+  // Get asset prices (use calendar year)
+  const physicalGoldPrice = getAssetPriceAtDate(getAssetData('Physical_Gold'), calendarYear, gameState.currentMonth);
+  const digitalGoldPrice = getAssetPriceAtDate(getAssetData('Digital_Gold'), calendarYear, gameState.currentMonth);
 
   // Get price history for charts (last 12 months)
   const getRecentPrices = (data: AssetData[], months: number = 12): number[] => {
     const prices: number[] = [];
     for (let i = months; i >= 0; i--) {
       let targetMonth = gameState.currentMonth - i;
-      let targetYear = currentYear;
+      let targetCalendarYear = calendarYear;
 
       if (targetMonth <= 0) {
         targetMonth += 12;
-        targetYear -= 1;
+        targetCalendarYear -= 1;
       }
 
-      const price = getAssetPriceAtDate(data, targetYear, targetMonth);
+      const price = getAssetPriceAtDate(data, targetCalendarYear, targetMonth);
       prices.push(price);
     }
     return prices;
@@ -144,38 +277,38 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const previousPhysicalGoldPrice = physicalGoldHistory[physicalGoldHistory.length - 2] || physicalGoldPrice;
   const previousDigitalGoldPrice = digitalGoldHistory[digitalGoldHistory.length - 2] || digitalGoldPrice;
 
-  // Fund prices (dynamically selected)
-  const fundPrice = selectedAssets ? getAssetPriceAtDate(getAssetData(selectedAssets.fundName), currentYear, gameState.currentMonth) : 0;
+  // Fund prices (dynamically selected) - use calendar year
+  const fundPrice = selectedAssets ? getAssetPriceAtDate(getAssetData(selectedAssets.fundName), calendarYear, gameState.currentMonth) : 0;
   const fundHistory = selectedAssets ? getRecentPrices(getAssetData(selectedAssets.fundName)) : [];
   const previousFundPrice = fundHistory[fundHistory.length - 2] || fundPrice;
 
-  // Crypto prices
-  const btcPrice = getAssetPriceAtDate(getAssetData('BTC'), currentYear, gameState.currentMonth);
+  // Crypto prices - use calendar year
+  const btcPrice = getAssetPriceAtDate(getAssetData('BTC'), calendarYear, gameState.currentMonth);
   const btcHistory = getRecentPrices(getAssetData('BTC'));
   const previousBtcPrice = btcHistory[btcHistory.length - 2] || btcPrice;
 
-  const ethPrice = getAssetPriceAtDate(getAssetData('ETH'), currentYear, gameState.currentMonth);
+  const ethPrice = getAssetPriceAtDate(getAssetData('ETH'), calendarYear, gameState.currentMonth);
   const ethHistory = getRecentPrices(getAssetData('ETH'));
   const previousEthPrice = ethHistory[ethHistory.length - 2] || ethPrice;
 
-  // Commodity prices (dynamically selected)
-  const commodityPrice = selectedAssets ? getAssetPriceAtDate(getAssetData(selectedAssets.commodity), currentYear, gameState.currentMonth) : 0;
+  // Commodity prices (dynamically selected) - use calendar year
+  const commodityPrice = selectedAssets ? getAssetPriceAtDate(getAssetData(selectedAssets.commodity), calendarYear, gameState.currentMonth) : 0;
   const commodityHistory = selectedAssets ? getRecentPrices(getAssetData(selectedAssets.commodity)) : [];
   const previousCommodityPrice = commodityHistory[commodityHistory.length - 2] || commodityPrice;
 
-  // REIT prices
-  const embassyPrice = getAssetPriceAtDate(getAssetData('EMBASSY'), currentYear, gameState.currentMonth);
+  // REIT prices - use calendar year
+  const embassyPrice = getAssetPriceAtDate(getAssetData('EMBASSY'), calendarYear, gameState.currentMonth);
   const embassyHistory = getRecentPrices(getAssetData('EMBASSY'));
   const previousEmbassyPrice = embassyHistory[embassyHistory.length - 2] || embassyPrice;
 
-  const mindspacePrice = getAssetPriceAtDate(getAssetData('MINDSPACE'), currentYear, gameState.currentMonth);
+  const mindspacePrice = getAssetPriceAtDate(getAssetData('MINDSPACE'), calendarYear, gameState.currentMonth);
   const mindspaceHistory = getRecentPrices(getAssetData('MINDSPACE'));
   const previousMindspacePrice = mindspaceHistory[mindspaceHistory.length - 2] || mindspacePrice;
 
-  // Helper function to get stock price data dynamically
+  // Helper function to get stock price data dynamically - use calendar year
   const getStockPriceData = (stockName: string) => {
     const data = getAssetData(stockName);
-    const price = getAssetPriceAtDate(data, currentYear, gameState.currentMonth);
+    const price = getAssetPriceAtDate(data, calendarYear, gameState.currentMonth);
     const history = getRecentPrices(data);
     const previousPrice = history[history.length - 2] || price;
     return { price, history, previousPrice };
@@ -185,20 +318,254 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     <div className="game-screen">
       {/* Left Sidebar */}
       <div className="sidebar">
-        <h1 className="game-logo">BUILD<br />YOUR<br />DHAN</h1>
+        <h1 className="game-logo"> ₹RUPEE<br />RUSH</h1>
 
         <div className="game-info">
           <p className="quote">
-            Rule No. 1 is never lose money. Rule No. 2 is never forget Rule No. 1.
+            {gameState.yearlyQuotes && gameState.yearlyQuotes[gameState.currentYear - 1]
+              ? gameState.yearlyQuotes[gameState.currentYear - 1]
+              : "Rule No. 1 is never lose money. Rule No. 2 is never forget Rule No. 1."}
           </p>
         </div>
 
         <div className="pocket-cash">
           <div className="pocket-label">Pocket Cash</div>
-          <div className="pocket-amount">₹{gameState.pocketCash.toFixed(2)}</div>
+          <div className="pocket-amount">₹{formatCurrency(gameState.pocketCash)}</div>
         </div>
 
-        <div className="leaderboard">
+        {/* Net Worth Section */}
+        {(() => {
+          // Calculate total portfolio value
+          let totalInvested = 0;
+          let currentValue = 0;
+          const breakdown: { name: string; value: number; percentage: number }[] = [];
+
+          // Add pocket cash
+          const pocketCashValue = gameState.pocketCash;
+          currentValue += pocketCashValue;
+
+          // Add savings account
+          const savingsValue = gameState.savingsAccount.balance;
+          if (savingsValue > 0) {
+            totalInvested += savingsValue;
+            currentValue += savingsValue;
+          }
+
+          // Add fixed deposits
+          gameState.fixedDeposits.forEach(fd => {
+            totalInvested += fd.amount;
+            const fdValue = fd.isMatured ? fd.amount * (1 + fd.interestRate / 100) : fd.amount;
+            currentValue += fdValue;
+          });
+
+          // Physical Gold
+          if (gameState.holdings.physicalGold.quantity > 0) {
+            totalInvested += gameState.holdings.physicalGold.totalInvested;
+            currentValue += gameState.holdings.physicalGold.quantity * physicalGoldPrice;
+          }
+
+          // Digital Gold
+          if (gameState.holdings.digitalGold.quantity > 0) {
+            totalInvested += gameState.holdings.digitalGold.totalInvested;
+            currentValue += gameState.holdings.digitalGold.quantity * digitalGoldPrice;
+          }
+
+          // Index Fund
+          if (gameState.holdings.indexFund.quantity > 0) {
+            totalInvested += gameState.holdings.indexFund.totalInvested;
+            currentValue += gameState.holdings.indexFund.quantity * fundPrice;
+          }
+
+          // Mutual Fund
+          if (gameState.holdings.mutualFund.quantity > 0) {
+            totalInvested += gameState.holdings.mutualFund.totalInvested;
+            currentValue += gameState.holdings.mutualFund.quantity * fundPrice;
+          }
+
+          // Stocks
+          Object.entries(gameState.holdings.stocks).forEach(([stockName, holding]) => {
+            if (holding.quantity > 0) {
+              totalInvested += holding.totalInvested;
+              const stockPrice = assetDataMap[stockName]
+                ? getAssetPriceAtDate(assetDataMap[stockName], calendarYear, gameState.currentMonth)
+                : 0;
+              currentValue += holding.quantity * stockPrice;
+            }
+          });
+
+          // Crypto
+          if (gameState.holdings.crypto['BTC']?.quantity > 0) {
+            totalInvested += gameState.holdings.crypto['BTC'].totalInvested;
+            currentValue += gameState.holdings.crypto['BTC'].quantity * btcPrice;
+          }
+          if (gameState.holdings.crypto['ETH']?.quantity > 0) {
+            totalInvested += gameState.holdings.crypto['ETH'].totalInvested;
+            currentValue += gameState.holdings.crypto['ETH'].quantity * ethPrice;
+          }
+
+          // Commodity
+          if (gameState.holdings.commodity.quantity > 0) {
+            totalInvested += gameState.holdings.commodity.totalInvested;
+            currentValue += gameState.holdings.commodity.quantity * commodityPrice;
+          }
+
+          // REITs
+          if (gameState.holdings.reits['EMBASSY']?.quantity > 0) {
+            totalInvested += gameState.holdings.reits['EMBASSY'].totalInvested;
+            currentValue += gameState.holdings.reits['EMBASSY'].quantity * embassyPrice;
+          }
+          if (gameState.holdings.reits['MINDSPACE']?.quantity > 0) {
+            totalInvested += gameState.holdings.reits['MINDSPACE'].totalInvested;
+            currentValue += gameState.holdings.reits['MINDSPACE'].quantity * mindspacePrice;
+          }
+
+          // Calculate breakdown percentages
+          if (currentValue > 0) {
+            if (pocketCashValue > 0) {
+              breakdown.push({
+                name: 'Pocket Cash',
+                value: pocketCashValue,
+                percentage: (pocketCashValue / currentValue) * 100
+              });
+            }
+            if (savingsValue > 0) {
+              breakdown.push({
+                name: 'Savings',
+                value: savingsValue,
+                percentage: (savingsValue / currentValue) * 100
+              });
+            }
+            // Add Fixed Deposits to breakdown
+            if (gameState.fixedDeposits.length > 0) {
+              let fdTotalValue = 0;
+              gameState.fixedDeposits.forEach(fd => {
+                const fdValue = fd.isMatured ? fd.amount * (1 + fd.interestRate / 100) : fd.amount;
+                fdTotalValue += fdValue;
+              });
+              if (fdTotalValue > 0) {
+                breakdown.push({
+                  name: 'Fixed Deposits',
+                  value: fdTotalValue,
+                  percentage: (fdTotalValue / currentValue) * 100
+                });
+              }
+            }
+            if (gameState.holdings.physicalGold.quantity > 0) {
+              const value = gameState.holdings.physicalGold.quantity * physicalGoldPrice;
+              breakdown.push({
+                name: 'Physical Gold',
+                value,
+                percentage: (value / currentValue) * 100
+              });
+            }
+            if (gameState.holdings.digitalGold.quantity > 0) {
+              const value = gameState.holdings.digitalGold.quantity * digitalGoldPrice;
+              breakdown.push({
+                name: 'Digital Gold',
+                value,
+                percentage: (value / currentValue) * 100
+              });
+            }
+            if (gameState.holdings.indexFund.quantity > 0 || gameState.holdings.mutualFund.quantity > 0) {
+              const value = (gameState.holdings.indexFund.quantity + gameState.holdings.mutualFund.quantity) * fundPrice;
+              if (value > 0) {
+                breakdown.push({
+                  name: 'Funds',
+                  value,
+                  percentage: (value / currentValue) * 100
+                });
+              }
+            }
+
+            // Aggregate stocks
+            let stocksTotal = 0;
+            Object.entries(gameState.holdings.stocks).forEach(([stockName, holding]) => {
+              if (holding.quantity > 0) {
+                const stockPrice = assetDataMap[stockName]
+                  ? getAssetPriceAtDate(assetDataMap[stockName], calendarYear, gameState.currentMonth)
+                  : 0;
+                stocksTotal += holding.quantity * stockPrice;
+              }
+            });
+            if (stocksTotal > 0) {
+              breakdown.push({
+                name: 'Stocks',
+                value: stocksTotal,
+                percentage: (stocksTotal / currentValue) * 100
+              });
+            }
+
+            // Aggregate crypto
+            let cryptoTotal = 0;
+            if (gameState.holdings.crypto['BTC']?.quantity > 0) {
+              cryptoTotal += gameState.holdings.crypto['BTC'].quantity * btcPrice;
+            }
+            if (gameState.holdings.crypto['ETH']?.quantity > 0) {
+              cryptoTotal += gameState.holdings.crypto['ETH'].quantity * ethPrice;
+            }
+            if (cryptoTotal > 0) {
+              breakdown.push({
+                name: 'Crypto',
+                value: cryptoTotal,
+                percentage: (cryptoTotal / currentValue) * 100
+              });
+            }
+
+            if (gameState.holdings.commodity.quantity > 0) {
+              const value = gameState.holdings.commodity.quantity * commodityPrice;
+              breakdown.push({
+                name: 'Commodity',
+                value,
+                percentage: (value / currentValue) * 100
+              });
+            }
+
+            // Aggregate REITs
+            let reitsTotal = 0;
+            if (gameState.holdings.reits['EMBASSY']?.quantity > 0) {
+              reitsTotal += gameState.holdings.reits['EMBASSY'].quantity * embassyPrice;
+            }
+            if (gameState.holdings.reits['MINDSPACE']?.quantity > 0) {
+              reitsTotal += gameState.holdings.reits['MINDSPACE'].quantity * mindspacePrice;
+            }
+            if (reitsTotal > 0) {
+              breakdown.push({
+                name: 'REITs',
+                value: reitsTotal,
+                percentage: (reitsTotal / currentValue) * 100
+              });
+            }
+          }
+
+          const netWorth = currentValue;
+
+          // Calculate percentage gain/loss based on starting cash (₹1,00,000)
+          const gainFromStart = netWorth - STARTING_CASH;
+          const gainPercentage = (gainFromStart / STARTING_CASH) * 100;
+
+          return (
+            <div className="net-worth">
+              <div className="net-worth-label">Net Worth</div>
+              <div className="net-worth-amount">₹{formatCurrency(netWorth)}</div>
+              <div className="net-worth-pl" style={{ color: gainFromStart >= 0 ? '#7efc4cff' : 'rgba(255, 68, 68, 1)' }}>
+                {gainFromStart >= 0 ? '+' : ''}₹{formatCurrency(Math.abs(gainFromStart))} ({gainFromStart >= 0 ? '+' : ''}{gainPercentage.toFixed(2)}%)
+              </div>
+
+              <div className="net-worth-breakdown">
+                <div className="breakdown-title">Portfolio Breakdown</div>
+                {breakdown.map((item, idx) => (
+                  <div key={idx} className="breakdown-item">
+                    <span className="breakdown-name">{item.name}</span>
+                    <span className="breakdown-percentage">{item.percentage.toFixed(1)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Leaderboard - Hidden in Solo Mode, will be used in Multi Mode */}
+        {/* <div className="leaderboard">
           <h3>Leaderboard</h3>
           <ol>
             <li>__________</li>
@@ -207,10 +574,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             <li>__________</li>
             <li>__________</li>
           </ol>
-        </div>
+        </div> */}
 
         <div className="game-timer">
           <div>Year: {currentYear}/20</div>
+          {adminSettings && !adminSettings.hideCurrentYear && (
+            <div>Calendar: {calendarYear}</div>
+          )}
           <div>Month: {gameState.currentMonth}</div>
         </div>
 
@@ -221,172 +591,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
 
       {/* Main Content */}
       <div className={`main-content year-${currentYear}`}>
-        {/* Dynamic Layout Based on Year */}
-
-        {/* Year 1: Only Savings - Large Centered */}
-        {currentYear === 1 && (
-          <div className="year-1-layout">
-            <section className="banking-section">
-              <h2 className="section-title">BANKING</h2>
-              <div className="section-cards">
-                <SavingsAccountCard
-                  balance={gameState.savingsAccount.balance}
-                  pocketCash={gameState.pocketCash}
-                  onDeposit={onDeposit}
-                  onWithdraw={onWithdraw}
-                />
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* Year 2: Savings + FD - Split Screen */}
-        {currentYear === 2 && (
-          <div className="year-2-layout">
-            <section className="banking-section">
-              <h2 className="section-title">BANKING</h2>
-              <div className="section-cards">
-                <div className="large-card-wrapper">
-                  <SavingsAccountCard
-                    balance={gameState.savingsAccount.balance}
-                    pocketCash={gameState.pocketCash}
-                    onDeposit={onDeposit}
-                    onWithdraw={onWithdraw}
-                  />
-                </div>
-                <div className="large-card-wrapper">
-                  <FixedDepositCard
-                    fixedDeposits={gameState.fixedDeposits}
-                    pocketCash={gameState.pocketCash}
-                    currentRates={currentFDRates}
-                    onCreate={onCreateFD}
-                    onCollect={onCollectFD}
-                    onBreak={onBreakFD}
-                  />
-                </div>
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* Year 3: Savings + FD + Index Fund (horizontal) */}
-        {currentYear === 3 && (
-          <div className="year-3-layout">
-            <section className="banking-section">
-              <h2 className="section-title">BANKING</h2>
-              <div className="section-cards">
-                <SavingsAccountCard
-                  balance={gameState.savingsAccount.balance}
-                  pocketCash={gameState.pocketCash}
-                  onDeposit={onDeposit}
-                  onWithdraw={onWithdraw}
-                />
-                <FixedDepositCard
-                  fixedDeposits={gameState.fixedDeposits}
-                  pocketCash={gameState.pocketCash}
-                  currentRates={currentFDRates}
-                  onCreate={onCreateFD}
-                  onCollect={onCollectFD}
-                  onBreak={onBreakFD}
-                />
-              </div>
-            </section>
-            <section className="index-section">
-              <h2 className="section-title">INDEX FUND</h2>
-              <div className="section-cards">
-                {selectedAssets && (
-                  <TradeableAssetCard
-                    name={selectedAssets.fundName}
-                    currentPrice={fundPrice}
-                    previousPrice={previousFundPrice}
-                    priceHistory={fundHistory}
-                    holding={selectedAssets.fundType === 'index' ? gameState.holdings.indexFund : gameState.holdings.mutualFund}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
-                    onSell={(qty) => onSellAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
-                  />
-                )}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* Year 4: All Cards in One Row */}
-        {currentYear === 4 && (
-          <div className="year-4-layout">
-            <section className="banking-section">
-              <h2 className="section-title">BANKING</h2>
-              <div className="section-cards">
-                <SavingsAccountCard
-                  balance={gameState.savingsAccount.balance}
-                  pocketCash={gameState.pocketCash}
-                  onDeposit={onDeposit}
-                  onWithdraw={onWithdraw}
-                />
-                <FixedDepositCard
-                  fixedDeposits={gameState.fixedDeposits}
-                  pocketCash={gameState.pocketCash}
-                  currentRates={currentFDRates}
-                  onCreate={onCreateFD}
-                  onCollect={onCollectFD}
-                  onBreak={onBreakFD}
-                />
-              </div>
-            </section>
-            {isAssetUnlocked('PHYSICAL_GOLD') && (
-              <section className="gold-section">
-                <h2 className="section-title">GOLD</h2>
-                <div className="section-cards">
-                  <TradeableAssetCard
-                    name="PHYSICAL GOLD"
-                    currentPrice={physicalGoldPrice}
-                    previousPrice={previousPhysicalGoldPrice}
-                    priceHistory={physicalGoldHistory}
-                    holding={gameState.holdings.physicalGold}
-                    pocketCash={gameState.pocketCash}
-                    unit="/10g"
-                    onBuy={(qty) => onBuyAsset('physicalGold', 'Physical_Gold', qty, physicalGoldPrice)}
-                    onSell={(qty) => onSellAsset('physicalGold', 'Physical_Gold', qty, physicalGoldPrice)}
-                  />
-                  <TradeableAssetCard
-                    name="DIGITAL GOLD"
-                    currentPrice={digitalGoldPrice}
-                    previousPrice={previousDigitalGoldPrice}
-                    priceHistory={digitalGoldHistory}
-                    holding={gameState.holdings.digitalGold}
-                    pocketCash={gameState.pocketCash}
-                    unit="/10g"
-                    onBuy={(qty) => onBuyAsset('digitalGold', 'Digital_Gold', qty, digitalGoldPrice)}
-                    onSell={(qty) => onSellAsset('digitalGold', 'Digital_Gold', qty, digitalGoldPrice)}
-                  />
-                </div>
-              </section>
-            )}
-            <section className="index-section">
-              <h2 className="section-title">INDEX FUND</h2>
-              <div className="section-cards">
-                {selectedAssets && (
-                  <TradeableAssetCard
-                    name={selectedAssets.fundName}
-                    currentPrice={fundPrice}
-                    previousPrice={previousFundPrice}
-                    priceHistory={fundHistory}
-                    holding={selectedAssets.fundType === 'index' ? gameState.holdings.indexFund : gameState.holdings.mutualFund}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
-                    onSell={(qty) => onSellAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
-                  />
-                )}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* Year 5+: Wrapped Layout with Sections */}
-        {currentYear >= 5 && (
-          <div className={`year-${currentYear}-layout`}>
+        {/* Dynamic Layout Based on Unlocked Assets */}
+        <div className="dynamic-assets-layout">
             {/* BANKING Section */}
             <section className="banking-section">
               <h2 className="section-title">BANKING</h2>
@@ -397,122 +603,149 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   onDeposit={onDeposit}
                   onWithdraw={onWithdraw}
                 />
-                <FixedDepositCard
-                  fixedDeposits={gameState.fixedDeposits}
-                  pocketCash={gameState.pocketCash}
-                  currentRates={currentFDRates}
-                  onCreate={onCreateFD}
-                  onCollect={onCollectFD}
-                  onBreak={onBreakFD}
-                />
+                {isAssetUnlocked('FIXED_DEPOSIT') && (
+                  <FixedDepositCard
+                    fixedDeposits={gameState.fixedDeposits}
+                    pocketCash={gameState.pocketCash}
+                    currentRates={currentFDRates}
+                    onCreate={onCreateFD}
+                    onCollect={onCollectFD}
+                    onBreak={onBreakFD}
+                  />
+                )}
               </div>
             </section>
 
             {/* GOLD Section */}
-            {isAssetUnlocked('PHYSICAL_GOLD') && (
+            {(isAssetUnlocked('PHYSICAL_GOLD') || isAssetUnlocked('DIGITAL_GOLD')) && (
               <section className="gold-section">
                 <h2 className="section-title">GOLD</h2>
                 <div className="section-cards">
-                  <TradeableAssetCard
-                    name="PHYSICAL GOLD"
-                    currentPrice={physicalGoldPrice}
-                    previousPrice={previousPhysicalGoldPrice}
-                    priceHistory={physicalGoldHistory}
-                    holding={gameState.holdings.physicalGold}
-                    pocketCash={gameState.pocketCash}
-                    unit="/10g"
-                    onBuy={(qty) => onBuyAsset('physicalGold', 'Physical_Gold', qty, physicalGoldPrice)}
-                    onSell={(qty) => onSellAsset('physicalGold', 'Physical_Gold', qty, physicalGoldPrice)}
-                  />
-                  <TradeableAssetCard
-                    name="DIGITAL GOLD"
-                    currentPrice={digitalGoldPrice}
-                    previousPrice={previousDigitalGoldPrice}
-                    priceHistory={digitalGoldHistory}
-                    holding={gameState.holdings.digitalGold}
-                    pocketCash={gameState.pocketCash}
-                    unit="/10g"
-                    onBuy={(qty) => onBuyAsset('digitalGold', 'Digital_Gold', qty, digitalGoldPrice)}
-                    onSell={(qty) => onSellAsset('digitalGold', 'Digital_Gold', qty, digitalGoldPrice)}
-                  />
+                  {isAssetUnlocked('PHYSICAL_GOLD') && (
+                    <TradeableAssetCard
+                      name="PHYSICAL GOLD"
+                      currentPrice={physicalGoldPrice}
+                      previousPrice={previousPhysicalGoldPrice}
+                      priceHistory={physicalGoldHistory}
+                      holding={gameState.holdings.physicalGold}
+                      pocketCash={gameState.pocketCash}
+                      unit="/10g"
+                      onBuy={(qty) => onBuyAsset('physicalGold', 'Physical_Gold', qty, physicalGoldPrice)}
+                      onSell={(qty) => onSellAsset('physicalGold', 'Physical_Gold', qty, physicalGoldPrice)}
+                    />
+                  )}
+                  {isAssetUnlocked('DIGITAL_GOLD') && (
+                    <TradeableAssetCard
+                      name="DIGITAL GOLD"
+                      currentPrice={digitalGoldPrice}
+                      previousPrice={previousDigitalGoldPrice}
+                      priceHistory={digitalGoldHistory}
+                      holding={gameState.holdings.digitalGold}
+                      pocketCash={gameState.pocketCash}
+                      unit="/share"
+                      onBuy={(qty) => onBuyAsset('digitalGold', 'Digital_Gold', qty, digitalGoldPrice)}
+                      onSell={(qty) => onSellAsset('digitalGold', 'Digital_Gold', qty, digitalGoldPrice)}
+                    />
+                  )}
                 </div>
               </section>
             )}
 
             {/* INDEX FUND Section */}
-            <section className="index-section">
-              <h2 className="section-title">INDEX FUND</h2>
-              <div className="section-cards">
-                {selectedAssets && (
-                  <TradeableAssetCard
-                    name={selectedAssets.fundName}
-                    currentPrice={fundPrice}
-                    previousPrice={previousFundPrice}
-                    priceHistory={fundHistory}
-                    holding={selectedAssets.fundType === 'index' ? gameState.holdings.indexFund : gameState.holdings.mutualFund}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
-                    onSell={(qty) => onSellAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
-                  />
-                )}
-              </div>
-            </section>
+            {isAssetUnlocked(selectedAssets?.fundType === 'index' ? 'INDEX_FUND' : 'MUTUAL_FUND') && (
+              <section className="index-section">
+                <h2 className="section-title">{selectedAssets?.fundType === 'index' ? 'INDEX FUND' : 'MUTUAL FUND'}</h2>
+                <div className="section-cards">
+                  {selectedAssets && (
+                    <TradeableAssetCard
+                      name={selectedAssets.fundName}
+                      currentPrice={fundPrice}
+                      previousPrice={previousFundPrice}
+                      priceHistory={fundHistory}
+                      holding={selectedAssets.fundType === 'index' ? gameState.holdings.indexFund : gameState.holdings.mutualFund}
+                      pocketCash={gameState.pocketCash}
+                      unit="/share"
+                      onBuy={(qty) => onBuyAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
+                      onSell={(qty) => onSellAsset(selectedAssets.fundType === 'index' ? 'indexFund' : 'mutualFund', selectedAssets.fundName, qty, fundPrice)}
+                    />
+                  )}
+                </div>
+              </section>
+            )}
 
             {/* INDIVIDUAL STOCKS Section - Dynamic */}
             {isAssetUnlocked('INDIAN_STOCKS') && selectedAssets && (
               <section className="stocks-section">
                 <h2 className="section-title">INDIVIDUAL STOCKS</h2>
                 <div className="section-cards">
-                  {selectedAssets.stocks.map((stockName) => {
-                    const stockData = getStockPriceData(stockName);
-                    return (
-                      <TradeableAssetCard
-                        key={stockName}
-                        name={stockName}
-                        currentPrice={stockData.price}
-                        previousPrice={stockData.previousPrice}
-                        priceHistory={stockData.history}
-                        holding={gameState.holdings.stocks[stockName] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                        pocketCash={gameState.pocketCash}
-                        unit="/share"
-                        onBuy={(qty) => onBuyAsset('stocks', stockName, qty, stockData.price)}
-                        onSell={(qty) => onSellAsset('stocks', stockName, qty, stockData.price)}
-                        isStock={true}
-                      />
-                    );
-                  })}
+                  {selectedAssets.stocks
+                    .filter((stockName) => {
+                      // Only show stocks whose data is available at the current calendar year/month
+                      const stockTimeline = ASSET_TIMELINE_DATA[stockName];
+                      if (!stockTimeline) return false;
+
+                      // Check if stock data is available for current calendar year and month
+                      if (calendarYear > stockTimeline.firstYear) {
+                        return true;
+                      } else if (calendarYear === stockTimeline.firstYear && gameState.currentMonth >= stockTimeline.firstMonth) {
+                        return true;
+                      } else {
+                        return false; // Data not available yet
+                      }
+                    })
+                    .map((stockName) => {
+                      const stockData = getStockPriceData(stockName);
+                      return (
+                        <TradeableAssetCard
+                          key={stockName}
+                          name={stockName}
+                          currentPrice={stockData.price}
+                          previousPrice={stockData.previousPrice}
+                          priceHistory={stockData.history}
+                          holding={gameState.holdings.stocks[stockName] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
+                          pocketCash={gameState.pocketCash}
+                          unit="/share"
+                          onBuy={(qty) => onBuyAsset('stocks', stockName, qty, stockData.price)}
+                          onSell={(qty) => onSellAsset('stocks', stockName, qty, stockData.price)}
+                          isStock={true}
+                        />
+                      );
+                    })}
                 </div>
               </section>
             )}
 
             {/* CRYPTOCURRENCY Section */}
-            {isAssetUnlocked('BTC') && (
+            {(isAssetUnlocked('BTC') || isAssetUnlocked('ETH')) && (
               <section className="crypto-section">
                 <h2 className="section-title">CRYPTOCURRENCY</h2>
                 <div className="section-cards">
-                  <TradeableAssetCard
-                    name="BTC"
-                    currentPrice={btcPrice}
-                    previousPrice={previousBtcPrice}
-                    priceHistory={btcHistory}
-                    holding={gameState.holdings.crypto['BTC'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                    pocketCash={gameState.pocketCash}
-                    unit="/coin"
-                    onBuy={(qty) => onBuyAsset('crypto', 'BTC', qty, btcPrice)}
-                    onSell={(qty) => onSellAsset('crypto', 'BTC', qty, btcPrice)}
-                  />
-                  <TradeableAssetCard
-                    name="ETH"
-                    currentPrice={ethPrice}
-                    previousPrice={previousEthPrice}
-                    priceHistory={ethHistory}
-                    holding={gameState.holdings.crypto['ETH'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                    pocketCash={gameState.pocketCash}
-                    unit="/coin"
-                    onBuy={(qty) => onBuyAsset('crypto', 'ETH', qty, ethPrice)}
-                    onSell={(qty) => onSellAsset('crypto', 'ETH', qty, ethPrice)}
-                  />
+                  {isAssetUnlocked('BTC') && (
+                    <TradeableAssetCard
+                      name="BTC"
+                      currentPrice={btcPrice}
+                      previousPrice={previousBtcPrice}
+                      priceHistory={btcHistory}
+                      holding={gameState.holdings.crypto['BTC'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
+                      pocketCash={gameState.pocketCash}
+                      unit="/coin"
+                      onBuy={(qty) => onBuyAsset('crypto', 'BTC', qty, btcPrice)}
+                      onSell={(qty) => onSellAsset('crypto', 'BTC', qty, btcPrice)}
+                    />
+                  )}
+                  {isAssetUnlocked('ETH') && (
+                    <TradeableAssetCard
+                      name="ETH"
+                      currentPrice={ethPrice}
+                      previousPrice={previousEthPrice}
+                      priceHistory={ethHistory}
+                      holding={gameState.holdings.crypto['ETH'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
+                      pocketCash={gameState.pocketCash}
+                      unit="/coin"
+                      onBuy={(qty) => onBuyAsset('crypto', 'ETH', qty, ethPrice)}
+                      onSell={(qty) => onSellAsset('crypto', 'ETH', qty, ethPrice)}
+                    />
+                  )}
                 </div>
               </section>
             )}
@@ -538,37 +771,40 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             )}
 
             {/* REITs Section */}
-            {isAssetUnlocked('EMBASSY') && (
+            {(isAssetUnlocked('EMBASSY') || isAssetUnlocked('MINDSPACE')) && (
               <section className="reit-section">
                 <h2 className="section-title">REITs</h2>
                 <div className="section-cards">
-                  <TradeableAssetCard
-                    name="EMBASSY"
-                    currentPrice={embassyPrice}
-                    previousPrice={previousEmbassyPrice}
-                    priceHistory={embassyHistory}
-                    holding={gameState.holdings.reits['EMBASSY'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset('reits', 'EMBASSY', qty, embassyPrice)}
-                    onSell={(qty) => onSellAsset('reits', 'EMBASSY', qty, embassyPrice)}
-                  />
-                  <TradeableAssetCard
-                    name="MINDSPACE"
-                    currentPrice={mindspacePrice}
-                    previousPrice={previousMindspacePrice}
-                    priceHistory={mindspaceHistory}
-                    holding={gameState.holdings.reits['MINDSPACE'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
-                    pocketCash={gameState.pocketCash}
-                    unit="/share"
-                    onBuy={(qty) => onBuyAsset('reits', 'MINDSPACE', qty, mindspacePrice)}
-                    onSell={(qty) => onSellAsset('reits', 'MINDSPACE', qty, mindspacePrice)}
-                  />
+                  {isAssetUnlocked('EMBASSY') && (
+                    <TradeableAssetCard
+                      name="EMBASSY"
+                      currentPrice={embassyPrice}
+                      previousPrice={previousEmbassyPrice}
+                      priceHistory={embassyHistory}
+                      holding={gameState.holdings.reits['EMBASSY'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
+                      pocketCash={gameState.pocketCash}
+                      unit="/share"
+                      onBuy={(qty) => onBuyAsset('reits', 'EMBASSY', qty, embassyPrice)}
+                      onSell={(qty) => onSellAsset('reits', 'EMBASSY', qty, embassyPrice)}
+                    />
+                  )}
+                  {isAssetUnlocked('MINDSPACE') && (
+                    <TradeableAssetCard
+                      name="MINDSPACE"
+                      currentPrice={mindspacePrice}
+                      previousPrice={previousMindspacePrice}
+                      priceHistory={mindspaceHistory}
+                      holding={gameState.holdings.reits['MINDSPACE'] || { quantity: 0, avgPrice: 0, totalInvested: 0 }}
+                      pocketCash={gameState.pocketCash}
+                      unit="/share"
+                      onBuy={(qty) => onBuyAsset('reits', 'MINDSPACE', qty, mindspacePrice)}
+                      onSell={(qty) => onSellAsset('reits', 'MINDSPACE', qty, mindspacePrice)}
+                    />
+                  )}
                 </div>
               </section>
             )}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

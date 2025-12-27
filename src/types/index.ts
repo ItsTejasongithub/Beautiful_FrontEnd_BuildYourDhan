@@ -1,5 +1,5 @@
 export interface GameState {
-  mode: 'menu' | 'solo' | 'multi';
+  mode: 'menu' | 'solo' | 'multi' | 'settings';
   currentYear: number;
   currentMonth: number;
   pocketCash: number;
@@ -9,6 +9,9 @@ export interface GameState {
   gameStartTime: number;
   isPaused: boolean;
   selectedAssets?: SelectedAssets;
+  adminSettings?: AdminSettings;
+  assetUnlockSchedule?: AssetUnlockSchedule;
+  yearlyQuotes?: string[]; // Array of quotes, one per year (shuffled at game start)
 }
 
 export interface SelectedAssets {
@@ -69,4 +72,23 @@ export interface FDRate {
   threeMonth: number;
   oneYear: number;
   threeYear: number;
+}
+
+export type AssetCategory = 'BANKING' | 'GOLD' | 'STOCKS' | 'FUNDS' | 'CRYPTO' | 'REIT' | 'COMMODITIES';
+
+export interface AdminSettings {
+  selectedCategories: AssetCategory[];
+  gameStartYear: number;
+  hideCurrentYear: boolean;
+}
+
+export interface AssetUnlockSchedule {
+  [gameYear: number]: UnlockEntry[];
+}
+
+export interface UnlockEntry {
+  category: AssetCategory;
+  assetType: string;
+  assetNames?: string[];
+  calendarYear: number;
 }

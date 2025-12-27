@@ -1,5 +1,4 @@
 import { AssetData, FDRate } from '../types';
-import { GAME_START_YEAR } from './constants';
 
 export const loadCSV = async (path: string): Promise<string> => {
   const response = await fetch(path);
@@ -11,7 +10,24 @@ export const parseAssetCSV = (csvText: string): AssetData[] => {
   const lines = csvText.trim().split('\n');
   const data: AssetData[] = [];
 
-  // Skip first 3 header rows
+  // Read header to determine column structure
+  const headerLine = lines[0];
+  const headers = headerLine.split(',').map(h => h.trim());
+
+  // Find the index of the "Close" column (this is the price we want)
+  let priceColumnIndex = headers.findIndex(h => h.toLowerCase() === 'close');
+
+  // If no "Close" column found, try "Price" column
+  if (priceColumnIndex === -1) {
+    priceColumnIndex = headers.findIndex(h => h.toLowerCase() === 'price');
+  }
+
+  // Default to column 1 if we can't find a suitable column
+  if (priceColumnIndex === -1) {
+    priceColumnIndex = 1;
+  }
+
+  // Skip first 3 header rows (header, ticker, date label)
   for (let i = 3; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
@@ -19,9 +35,9 @@ export const parseAssetCSV = (csvText: string): AssetData[] => {
     const parts = line.split(',');
     if (parts.length >= 2) {
       const date = parts[0];
-      const closePrice = parseFloat(parts[1]);
+      const closePrice = parseFloat(parts[priceColumnIndex]);
 
-      if (date && !isNaN(closePrice)) {
+      if (date && !isNaN(closePrice) && closePrice > 0) {
         data.push({
           date: date,
           price: closePrice
@@ -59,16 +75,27 @@ export const parseFDRates = (csvText: string): FDRate[] => {
   return rates;
 };
 
-export const getAssetPriceAtDate = (assetData: AssetData[], gameYear: number, month: number): number => {
+export const getAssetPriceAtDate = (assetData: AssetData[], calendarYear: number, month: number): number => {
   if (!assetData || assetData.length === 0) {
     return 0;
   }
 
-  // Map game year (1-20) to actual calendar year
-  // Game starts in 2005, so gameYear 1 = 2005, gameYear 2 = 2006, etc.
-  const actualYear = GAME_START_YEAR + gameYear - 1;
+  // Use the calendar year directly (e.g., 2005, 2006, etc.)
+  const targetDate = new Date(calendarYear, month - 1);
 
-  const targetDate = new Date(actualYear, month - 1);
+  // Check if the target date is before the first data point
+  const firstDataDate = new Date(assetData[0].date);
+  if (targetDate < firstDataDate) {
+    // Data not available yet for this year
+    return 0;
+  }
+
+  // Check if the target date is after the last data point
+  const lastDataDate = new Date(assetData[assetData.length - 1].date);
+  if (targetDate > lastDataDate) {
+    // Use the last available price
+    return assetData[assetData.length - 1].price;
+  }
 
   let closestData = assetData[0];
   let minDiff = Number.MAX_VALUE;
@@ -86,7 +113,7 @@ export const getAssetPriceAtDate = (assetData: AssetData[], gameYear: number, mo
   return closestData?.price || 0;
 };
 
-export const getFDRateForYear = (fdRates: FDRate[], gameYear: number, duration: 3 | 12 | 36): number => {
+export const getFDRateForYear = (fdRates: FDRate[], calendarYear: number, duration: 3 | 12 | 36): number => {
   if (!fdRates || fdRates.length === 0) {
     // Default rates if no data available
     if (duration === 3) return 6.9;
@@ -94,12 +121,10 @@ export const getFDRateForYear = (fdRates: FDRate[], gameYear: number, duration: 
     return 7.5;
   }
 
-  // Map game year to actual calendar year
-  const actualYear = GAME_START_YEAR + gameYear - 1;
-
+  // Use calendar year directly (e.g., 2005, 2006, etc.)
   // Find the most recent rate that applies to this year
   const sortedRates = [...fdRates].sort((a, b) => b.year - a.year);
-  const rate = sortedRates.find(r => r.year <= actualYear) || fdRates[fdRates.length - 1];
+  const rate = sortedRates.find(r => r.year <= calendarYear) || fdRates[fdRates.length - 1];
 
   if (!rate) {
     // Fallback to default rates
