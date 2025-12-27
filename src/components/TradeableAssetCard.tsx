@@ -196,12 +196,34 @@ export const TradeableAssetCard: React.FC<TradeableAssetCardProps> = ({
       )}
 
       <div className="button-group">
-        <button className="action-button buy-btn" onClick={handleBuy}>
-          BUY
-        </button>
-        <button className="action-button sell-btn" onClick={handleSell}>
-          SELL
-        </button>
+        {mode === 'buy' ? (
+          <>
+            <button className="action-button buy-btn" onClick={handleBuy}>
+              BUY
+            </button>
+            <button className="action-button cancel-btn" onClick={() => setMode('none')}>
+              CANCEL
+            </button>
+          </>
+        ) : mode === 'sell' ? (
+          <>
+            <button className="action-button cancel-btn" onClick={() => setMode('none')}>
+              CANCEL
+            </button>
+            <button className="action-button sell-btn" onClick={handleSell}>
+              SELL
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="action-button buy-btn" onClick={handleBuy}>
+              BUY
+            </button>
+            <button className="action-button sell-btn" onClick={handleSell}>
+              SELL
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -130,7 +130,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         'INDIAN_STOCKS': ['STOCKS'],
         'BTC': ['BTC'],
         'ETH': ['ETH'],
-        'COMMODITY': ['SILVER', 'CRUDEOIL_WTI', 'COPPER', 'WHEAT', 'BRENT'],
+        'COMMODITY': ['COTTON', 'WHEAT', 'CRUDEOIL_WTI', 'SILVER', 'NATURALGAS', 'COPPER', 'BRENT', 'ALUMINIUM'],
         'EMBASSY': ['EMBASSY'],
         'MINDSPACE': ['MINDSPACE'],
         'INDEX_FUND': ['NIFTYBEES', 'UTINIFTETF', 'HDFCNIFETF', 'SETFNIF50', 'SBI_Bluechip', 'ICICI_Bluechip', 'Axis_Midcap', 'Kotak_Emerging', 'PGIM_Midcap', 'Nippon_SmallCap'],
