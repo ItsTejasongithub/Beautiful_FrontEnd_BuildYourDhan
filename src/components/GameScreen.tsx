@@ -265,11 +265,20 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       'MINDSPACE': 'REIT'
     };
 
-    // Check each category and show quiz if newly unlocked
+    // Build dynamic list of categories to check based on user's selected assets
     const categoriesToCheck = [
       'SAVINGS_AC', 'FIXED_DEPOSIT', 'PHYSICAL_GOLD', 'INDIAN_STOCKS',
-      'BTC', 'COMMODITY', 'INDEX_FUND', 'MUTUAL_FUND', 'EMBASSY'
+      'BTC', 'COMMODITY', 'EMBASSY'
     ];
+
+    // Only add the fund type that user actually selected (not both!)
+    if (selectedAssets) {
+      if (selectedAssets.fundType === 'index') {
+        categoriesToCheck.push('INDEX_FUND');
+      } else {
+        categoriesToCheck.push('MUTUAL_FUND');
+      }
+    }
 
     for (const category of categoriesToCheck) {
       const quizCategory = categoryMap[category];
@@ -292,7 +301,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         }
       }
     }
-  }, [currentYear, gameState.currentMonth, gameState.completedQuizzes, isAssetCategoryUnlocked, gameState.isPaused, onTogglePause]);
+  }, [currentYear, gameState.currentMonth, gameState.completedQuizzes, isAssetCategoryUnlocked, gameState.isPaused, onTogglePause, selectedAssets]);
 
   // Handle quiz completion
   const handleQuizComplete = () => {
