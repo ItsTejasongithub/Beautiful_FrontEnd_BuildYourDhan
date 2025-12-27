@@ -284,11 +284,15 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         if (educationContent) {
           setCurrentQuizCategory(quizCategory);
           setShowEducationModal(true);
+          // Pause the game when quiz appears
+          if (!gameState.isPaused) {
+            onTogglePause();
+          }
           break; // Show one quiz at a time
         }
       }
     }
-  }, [currentYear, gameState.currentMonth, gameState.completedQuizzes, isAssetCategoryUnlocked]);
+  }, [currentYear, gameState.currentMonth, gameState.completedQuizzes, isAssetCategoryUnlocked, gameState.isPaused, onTogglePause]);
 
   // Handle quiz completion
   const handleQuizComplete = () => {
@@ -296,6 +300,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       onMarkQuizCompleted(currentQuizCategory);
       setShowEducationModal(false);
       setCurrentQuizCategory(null);
+      // Unpause the game when quiz is completed
+      if (gameState.isPaused) {
+        onTogglePause();
+      }
     }
   };
 
