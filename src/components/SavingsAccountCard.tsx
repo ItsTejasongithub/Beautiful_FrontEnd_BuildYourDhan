@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './AssetCard.css';
+import './StockTooltip.css';
 
 interface SavingsAccountCardProps {
   balance: number;
@@ -66,7 +67,14 @@ export const SavingsAccountCard: React.FC<SavingsAccountCardProps> = ({
 
   return (
     <div className={`asset-card savings-card ${isShaking ? 'shake' : ''}`}>
-      <h3 className="card-title">SAVING ACCOUNT</h3>
+      <div className="asset-tooltip-wrapper">
+        <h3 className="card-title">SAVING ACCOUNT</h3>
+        <div className="asset-tooltip">
+          <div className="tooltip-full-name">Savings Bank Account</div>
+          <div className="tooltip-sector">Banking - Safe Investment</div>
+          <div className="tooltip-description">Low-risk deposit account with guaranteed returns and instant liquidity for emergencies</div>
+        </div>
+      </div>
 
       <div className="balance-display">
         <div className="balance-label">Balance</div>

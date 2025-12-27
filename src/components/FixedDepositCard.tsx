@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FixedDeposit } from '../types';
 import './AssetCard.css';
+import './StockTooltip.css';
 import { ConfirmModal } from './ConfirmModal';
 
 interface FixedDepositCardProps {
@@ -76,7 +77,14 @@ export const FixedDepositCard: React.FC<FixedDepositCardProps> = ({
 
   return (
     <div className={`asset-card fd-card ${isShaking ? 'shake' : ''}`}>
-      <h3 className="card-title">FIXED DEPOSIT</h3>
+      <div className="asset-tooltip-wrapper">
+        <h3 className="card-title">FIXED DEPOSIT</h3>
+        <div className="asset-tooltip">
+          <div className="tooltip-full-name">Fixed Deposit (Term Deposit)</div>
+          <div className="tooltip-sector">Banking - Low Risk Investment</div>
+          <div className="tooltip-description">Safe investment with guaranteed returns and fixed tenure. Higher interest than savings account but penalty on early withdrawal</div>
+        </div>
+      </div>
 
       <div className="fd-rates">
         <div className="rate-item">

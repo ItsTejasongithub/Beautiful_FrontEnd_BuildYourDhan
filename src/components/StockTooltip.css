@@ -1,9 +1,13 @@
+/* Generic asset tooltip wrapper - works for all asset types */
+.asset-tooltip-wrapper,
 .stock-tooltip-wrapper {
   position: relative;
   display: inline-block;
   width: 100%;
 }
 
+/* Generic asset tooltip - works for all asset types */
+.asset-tooltip,
 .stock-tooltip {
   position: absolute;
   bottom: 105%;
@@ -25,6 +29,7 @@
   text-align: left;
 }
 
+.asset-tooltip-wrapper:hover .asset-tooltip,
 .stock-tooltip-wrapper:hover .stock-tooltip {
   opacity: 1;
   visibility: visible;
@@ -32,6 +37,7 @@
 }
 
 /* Tooltip arrow */
+.asset-tooltip::after,
 .stock-tooltip::after {
   content: '';
   position: absolute;
@@ -42,6 +48,7 @@
   border-top-color: #D4A574;
 }
 
+.asset-tooltip::before,
 .stock-tooltip::before {
   content: '';
   position: absolute;

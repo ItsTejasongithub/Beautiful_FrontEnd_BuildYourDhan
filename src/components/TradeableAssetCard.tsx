@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AssetHolding } from '../types';
 import { MiniChart } from './MiniChart';
-import { getStockInfo } from '../utils/stockInfo';
+import { getAssetInfo } from '../utils/stockInfo';
 import './AssetCard.css';
 import './StockTooltip.css';
 
@@ -97,23 +97,19 @@ export const TradeableAssetCard: React.FC<TradeableAssetCardProps> = ({
     ? Math.floor(pocketCash / currentPrice)
     : holding.quantity;
 
-  // Get stock info for tooltip (only for stocks)
-  const stockInfo = isStock ? getStockInfo(name) : null;
+  // Get asset info for tooltip (works for all asset types)
+  const assetInfo = getAssetInfo(name);
 
   return (
     <div className={`asset-card tradeable-card ${isStock ? 'stock-card' : ''} ${isShaking ? 'shake' : ''}`}>
-      {isStock && stockInfo ? (
-        <div className="stock-tooltip-wrapper">
-          <h3 className="card-title">{name}</h3>
-          <div className="stock-tooltip">
-            <div className="tooltip-full-name">{stockInfo.fullName}</div>
-            <div className="tooltip-sector">{stockInfo.sector}</div>
-            <div className="tooltip-description">{stockInfo.description}</div>
-          </div>
-        </div>
-      ) : (
+      <div className="asset-tooltip-wrapper">
         <h3 className="card-title">{name}</h3>
-      )}
+        <div className="asset-tooltip">
+          <div className="tooltip-full-name">{assetInfo.fullName}</div>
+          <div className="tooltip-sector">{assetInfo.sector}</div>
+          <div className="tooltip-description">{assetInfo.description}</div>
+        </div>
+      </div>
 
       <div className="chart-container">
         <MiniChart data={priceHistory} isPositive={isPositive} />

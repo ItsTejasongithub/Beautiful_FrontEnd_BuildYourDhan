@@ -1,9 +1,12 @@
-// Stock information database with company details
-export interface StockInfo {
+// Asset information database with details for all asset types
+export interface AssetInfo {
   fullName: string;
   sector: string;
   description: string;
 }
+
+// Legacy type alias for backwards compatibility
+export type StockInfo = AssetInfo;
 
 export const STOCK_INFO_DATABASE: { [key: string]: StockInfo } = {
   // 1996 batch - IT Giants & Banks
@@ -282,11 +285,185 @@ export const STOCK_INFO_DATABASE: { [key: string]: StockInfo } = {
   // Default fallback for any stock not in database
 };
 
+// Comprehensive asset information database (includes all tradeable assets)
+export const ASSET_INFO_DATABASE: { [key: string]: AssetInfo } = {
+  // Include all stocks
+  ...STOCK_INFO_DATABASE,
+
+  // Gold Investments
+  'Physical_Gold': {
+    fullName: 'Physical Gold',
+    sector: 'Precious Metals',
+    description: 'Traditional gold investment with intrinsic value and inflation hedge properties'
+  },
+  'Digital_Gold': {
+    fullName: 'Digital Gold',
+    sector: 'Precious Metals',
+    description: 'Modern way to invest in gold with 24K purity, backed by physical gold reserves'
+  },
+
+  // Cryptocurrencies
+  'BTC': {
+    fullName: 'Bitcoin',
+    sector: 'Cryptocurrency',
+    description: 'First and largest cryptocurrency, decentralized digital currency and store of value'
+  },
+  'ETH': {
+    fullName: 'Ethereum',
+    sector: 'Cryptocurrency',
+    description: 'Leading smart contract platform and second largest cryptocurrency by market cap'
+  },
+
+  // Index Funds
+  'NIFTYBEES': {
+    fullName: 'Nippon India ETF Nifty BeES',
+    sector: 'Index Fund - ETF',
+    description: 'India\'s first ETF tracking Nifty 50 index with low expense ratio'
+  },
+  'SETFNIF50': {
+    fullName: 'SBI ETF Nifty 50',
+    sector: 'Index Fund - ETF',
+    description: 'Exchange-traded fund tracking top 50 large-cap Indian companies'
+  },
+  'UTINIFTETF': {
+    fullName: 'UTI Nifty 50 ETF',
+    sector: 'Index Fund - ETF',
+    description: 'Passive investment fund mirroring Nifty 50 performance'
+  },
+  'HDFCNIFETF': {
+    fullName: 'HDFC Nifty 50 ETF',
+    sector: 'Index Fund - ETF',
+    description: 'Low-cost index fund for diversified large-cap exposure'
+  },
+  'ICICIB22': {
+    fullName: 'ICICI Prudential Nifty Next 50 ETF',
+    sector: 'Index Fund - ETF',
+    description: 'Tracks Nifty Next 50 index featuring emerging blue-chip companies'
+  },
+
+  // Mutual Funds
+  'SBI_Bluechip': {
+    fullName: 'SBI Bluechip Fund',
+    sector: 'Mutual Fund - Large Cap',
+    description: 'Actively managed large-cap equity fund focusing on established companies'
+  },
+  'ICICI_Bluechip': {
+    fullName: 'ICICI Prudential Bluechip Fund',
+    sector: 'Mutual Fund - Large Cap',
+    description: 'Large-cap fund investing in fundamentally strong market leaders'
+  },
+  'Axis_Midcap': {
+    fullName: 'Axis Midcap Fund',
+    sector: 'Mutual Fund - Mid Cap',
+    description: 'Mid-cap focused fund targeting high-growth potential companies'
+  },
+  'Kotak_Emerging': {
+    fullName: 'Kotak Emerging Equity Fund',
+    sector: 'Mutual Fund - Mid Cap',
+    description: 'Invests in emerging mid-cap companies with strong growth prospects'
+  },
+  'PGIM_Midcap': {
+    fullName: 'PGIM India Midcap Opportunities Fund',
+    sector: 'Mutual Fund - Mid Cap',
+    description: 'Opportunistic mid-cap fund for capital appreciation'
+  },
+  'Nippon_SmallCap': {
+    fullName: 'Nippon India Small Cap Fund',
+    sector: 'Mutual Fund - Small Cap',
+    description: 'High-risk, high-reward fund investing in small-cap companies'
+  },
+  'HDFC_SmallCap': {
+    fullName: 'HDFC Small Cap Fund',
+    sector: 'Mutual Fund - Small Cap',
+    description: 'Small-cap equity fund for aggressive long-term wealth creation'
+  },
+
+  // Commodities
+  'COTTON': {
+    fullName: 'Cotton Futures',
+    sector: 'Agricultural Commodity',
+    description: 'Natural fiber commodity influenced by weather, demand, and global textile industry'
+  },
+  'WHEAT': {
+    fullName: 'Wheat Futures',
+    sector: 'Agricultural Commodity',
+    description: 'Essential food grain commodity affected by climate and global food demand'
+  },
+  'CRUDEOIL_WTI': {
+    fullName: 'WTI Crude Oil',
+    sector: 'Energy Commodity',
+    description: 'West Texas Intermediate crude oil benchmark for US oil prices'
+  },
+  'SILVER': {
+    fullName: 'Silver',
+    sector: 'Precious Metals',
+    description: 'Industrial and precious metal with dual demand from jewelry and electronics'
+  },
+  'NATURALGAS': {
+    fullName: 'Natural Gas',
+    sector: 'Energy Commodity',
+    description: 'Clean energy commodity for heating, power generation, and industrial use'
+  },
+  'COPPER': {
+    fullName: 'Copper',
+    sector: 'Industrial Metal',
+    description: 'Essential industrial metal for construction, electronics, and green energy'
+  },
+  'BRENT': {
+    fullName: 'Brent Crude Oil',
+    sector: 'Energy Commodity',
+    description: 'International oil benchmark pricing two-thirds of global crude oil'
+  },
+  'ALUMINIUM': {
+    fullName: 'Aluminium',
+    sector: 'Industrial Metal',
+    description: 'Lightweight metal used in aerospace, automotive, and construction industries'
+  },
+
+  // REITs
+  'EMBASSY': {
+    fullName: 'Embassy Office Parks REIT',
+    sector: 'Real Estate Investment Trust',
+    description: 'India\'s first REIT, investing in premium commercial office spaces'
+  },
+  'MINDSPACE': {
+    fullName: 'Mindspace Business Parks REIT',
+    sector: 'Real Estate Investment Trust',
+    description: 'Premium office and business park REIT with presence across major cities'
+  },
+
+  // Forex
+  'USDINR': {
+    fullName: 'US Dollar / Indian Rupee',
+    sector: 'Foreign Exchange',
+    description: 'Most traded currency pair in India, reflects dollar strength vs rupee'
+  },
+  'EURINR': {
+    fullName: 'Euro / Indian Rupee',
+    sector: 'Foreign Exchange',
+    description: 'Exchange rate between Euro and Indian Rupee for European trade'
+  },
+  'GBPINR': {
+    fullName: 'British Pound / Indian Rupee',
+    sector: 'Foreign Exchange',
+    description: 'GBP to INR exchange rate for UK-India trade and investments'
+  }
+};
+
 // Helper function to get stock info with fallback
 export const getStockInfo = (stockSymbol: string): StockInfo => {
   return STOCK_INFO_DATABASE[stockSymbol] || {
     fullName: stockSymbol,
     sector: 'Diversified',
     description: 'Indian equity stock'
+  };
+};
+
+// Helper function to get any asset info with fallback
+export const getAssetInfo = (assetName: string): AssetInfo => {
+  return ASSET_INFO_DATABASE[assetName] || {
+    fullName: assetName,
+    sector: 'Investment',
+    description: 'Investment asset'
   };
 };
