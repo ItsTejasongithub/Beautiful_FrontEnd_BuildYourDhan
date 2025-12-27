@@ -12,6 +12,7 @@ export interface GameState {
   adminSettings?: AdminSettings;
   assetUnlockSchedule?: AssetUnlockSchedule;
   yearlyQuotes?: string[]; // Array of quotes, one per year (shuffled at game start)
+  completedQuizzes?: string[]; // Track which asset categories have completed their quiz
 }
 
 export interface SelectedAssets {

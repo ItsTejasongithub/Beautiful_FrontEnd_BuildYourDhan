@@ -36,7 +36,8 @@ export const useGameState = () => {
     fixedDeposits: [],
     holdings: initialHoldings,
     gameStartTime: 0,
-    isPaused: false
+    isPaused: false,
+    completedQuizzes: []
   });
 
   // Start game timer
@@ -157,7 +158,8 @@ export const useGameState = () => {
       selectedAssets,
       adminSettings,
       assetUnlockSchedule,
-      yearlyQuotes: shuffledQuotes
+      yearlyQuotes: shuffledQuotes,
+      completedQuizzes: []
     });
   }, []);
 
@@ -352,6 +354,13 @@ export const useGameState = () => {
     }));
   }, []);
 
+  const markQuizCompleted = useCallback((category: string) => {
+    setGameState(prev => ({
+      ...prev,
+      completedQuizzes: [...(prev.completedQuizzes || []), category]
+    }));
+  }, []);
+
   return {
     gameState,
     openSettings,
@@ -364,6 +373,7 @@ export const useGameState = () => {
     breakFD,
     buyAsset,
     sellAsset,
-    togglePause
+    togglePause,
+    markQuizCompleted
   };
 };

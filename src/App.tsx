@@ -17,7 +17,8 @@ function App() {
     breakFD,
     buyAsset,
     sellAsset,
-    togglePause
+    togglePause,
+    markQuizCompleted
   } = useGameState();
 
   return (
@@ -47,6 +48,7 @@ function App() {
           onBuyAsset={buyAsset}
           onSellAsset={sellAsset}
           onTogglePause={togglePause}
+          onMarkQuizCompleted={markQuizCompleted}
         />
       )}
     </div>

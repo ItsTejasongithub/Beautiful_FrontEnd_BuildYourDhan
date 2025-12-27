@@ -3,9 +3,11 @@ import { GameState, AssetData, FDRate } from '../types';
 import { SavingsAccountCard } from './SavingsAccountCard';
 import { FixedDepositCard } from './FixedDepositCard';
 import { TradeableAssetCard } from './TradeableAssetCard';
+import { AssetEducationModal } from './AssetEducationModal';
 import { loadCSV, parseAssetCSV, parseFDRates, getAssetPriceAtDate, getFDRateForYear } from '../utils/csvLoader';
 import { ASSET_UNLOCK_TIMELINE, STARTING_CASH } from '../utils/constants';
 import { ASSET_TIMELINE_DATA } from '../utils/assetUnlockCalculator';
+import { getEducationContent } from '../utils/assetEducation';
 import './GameScreen.css';
 
 interface GameScreenProps {
@@ -18,6 +20,7 @@ interface GameScreenProps {
   onBuyAsset: (assetType: string, assetName: string, quantity: number, price: number) => void;
   onSellAsset: (assetType: string, assetName: string, quantity: number, price: number) => void;
   onTogglePause: () => void;
+  onMarkQuizCompleted: (category: string) => void;
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({
@@ -29,7 +32,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   onBreakFD,
   onBuyAsset,
   onSellAsset,
-  onTogglePause
+  onTogglePause,
+  onMarkQuizCompleted
 }) => {
   // Helper function to format numbers with commas (Indian numbering system)
   const formatCurrency = (amount: number): string => {
@@ -50,6 +54,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   // Dynamic asset data storage
   const [assetDataMap, setAssetDataMap] = useState<{ [key: string]: AssetData[] }>({});
   const [fdRates, setFdRates] = useState<FDRate[]>([]);
+
+  // Education modal state
+  const [showEducationModal, setShowEducationModal] = useState(false);
+  const [currentQuizCategory, setCurrentQuizCategory] = useState<string | null>(null);
 
   const currentYear = gameState.currentYear;
   const selectedAssets = gameState.selectedAssets;
@@ -236,6 +244,60 @@ export const GameScreen: React.FC<GameScreenProps> = ({
 
   // Legacy function name for backward compatibility
   const isAssetUnlocked = isAssetCategoryUnlocked;
+
+  // Detect newly unlocked categories and show quiz modal
+  useEffect(() => {
+    const completedQuizzes = gameState.completedQuizzes || [];
+
+    // Define category mapping for quiz detection
+    const categoryMap: { [key: string]: string } = {
+      'SAVINGS_AC': 'SAVINGS_AC',
+      'FIXED_DEPOSIT': 'FIXED_DEPOSIT',
+      'PHYSICAL_GOLD': 'GOLD',
+      'DIGITAL_GOLD': 'GOLD',
+      'INDIAN_STOCKS': 'STOCKS',
+      'BTC': 'CRYPTO',
+      'ETH': 'CRYPTO',
+      'COMMODITY': 'COMMODITY',
+      'INDEX_FUND': 'INDEX_FUND',
+      'MUTUAL_FUND': 'MUTUAL_FUND',
+      'EMBASSY': 'REIT',
+      'MINDSPACE': 'REIT'
+    };
+
+    // Check each category and show quiz if newly unlocked
+    const categoriesToCheck = [
+      'SAVINGS_AC', 'FIXED_DEPOSIT', 'PHYSICAL_GOLD', 'INDIAN_STOCKS',
+      'BTC', 'COMMODITY', 'INDEX_FUND', 'MUTUAL_FUND', 'EMBASSY'
+    ];
+
+    for (const category of categoriesToCheck) {
+      const quizCategory = categoryMap[category];
+
+      // Skip if quiz already completed
+      if (completedQuizzes.includes(quizCategory)) continue;
+
+      // Check if category is now unlocked
+      if (isAssetCategoryUnlocked(category)) {
+        // Show quiz for this category
+        const educationContent = getEducationContent(quizCategory);
+        if (educationContent) {
+          setCurrentQuizCategory(quizCategory);
+          setShowEducationModal(true);
+          break; // Show one quiz at a time
+        }
+      }
+    }
+  }, [currentYear, gameState.currentMonth, gameState.completedQuizzes, isAssetCategoryUnlocked]);
+
+  // Handle quiz completion
+  const handleQuizComplete = () => {
+    if (currentQuizCategory) {
+      onMarkQuizCompleted(currentQuizCategory);
+      setShowEducationModal(false);
+      setCurrentQuizCategory(null);
+    }
+  };
 
   // Get current FD rates (use calendar year)
   const currentFDRates = {
@@ -806,6 +868,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             )}
         </div>
       </div>
+
+      {/* Education Quiz Modal */}
+      <AssetEducationModal
+        isOpen={showEducationModal}
+        content={currentQuizCategory ? getEducationContent(currentQuizCategory) : null}
+        onComplete={handleQuizComplete}
+      />
     </div>
   );
 };
