@@ -1,6 +1,9 @@
 # Ignore problematic files
 nul
 
+# Claude local settings
+.claude/settings.local.json
+
 # Node modules
 node_modules/
 **/node_modules/
