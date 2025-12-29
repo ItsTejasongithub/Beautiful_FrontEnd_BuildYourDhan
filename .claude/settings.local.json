@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(findstr:*)",
+      "Bash(dir /b \"C:\\\\Users\\\\dell\\\\Desktop\\\\GameV3\\\\frontend\\\\src\")",
+      "Bash(npm run dev:check:*)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(dir /b \"c:\\\\Users\\\\Tejas\\\\Downloads\\\\BeautifulGameDesgin 5.0 1\\\\BeautifulGameDesgin 2.0\\\\FrontEND\\\\src\\\\components\")",
+      "Bash(timeout:*)",
+      "Bash(exit 0)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(dir \"c:\\\\Users\\\\Tejas\\\\Downloads\\\\BeautifulGameDesgin 5.0 1\\\\BeautifulGameDesgin 2.0\" /b)",
+      "Bash(dir:*)",
+      "Bash(test:*)",
+      "Bash(echo:*)",
+      "Bash(find:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(rd /S /Q .git)"
+    ]
+  }
+}

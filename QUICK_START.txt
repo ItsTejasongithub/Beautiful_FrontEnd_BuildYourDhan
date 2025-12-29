@@ -1,0 +1,68 @@
+================================================================================
+                    RUPEE RUSH - QUICK START GUIDE
+================================================================================
+
+ PLAY ON THIS COMPUTER ONLY:
+ ----------------------------
+ 1. Double-click: START_GAME.bat
+ 2. Wait 5-10 seconds
+ 3. Game opens in browser automatically
+ 4. Play at: http://localhost:5173
+
+
+ PLAY WITH FRIENDS ON SAME WIFI:
+ --------------------------------
+ 1. Double-click: START_GAME.bat
+ 2. Look for "NETWORK ACCESS" URL (example: http://192.168.1.100:5173)
+ 3. Share that URL with your friends
+ 4. Friends open the URL in their browser
+ 5. Everyone can now play together!
+
+
+ STOP THE GAME:
+ --------------
+ - Double-click: STOP_GAME.bat
+
+
+ TROUBLESHOOTING:
+ ----------------
+ Friends can't connect?
+ → Right-click FIREWALL_FIX.bat
+ → Select "Run as Administrator"
+
+ Need your IP address?
+ → Double-click: NETWORK_INFO.bat
+
+
+ BATCH FILES:
+ ------------
+ START_GAME.bat     = Start the game (local + network)
+ STOP_GAME.bat      = Stop all servers
+ FIREWALL_FIX.bat   = Fix Windows Firewall (run as Admin)
+ NETWORK_INFO.bat   = Show your IP and connection info
+
+
+ REQUIREMENTS:
+ -------------
+ ✓ Node.js (version 18+)
+ ✓ Same WiFi network for all players
+ ✓ Modern web browser
+
+
+ PORTS USED:
+ -----------
+ 3001 = Backend Server
+ 5173 = Game UI
+
+
+ IMPORTANT:
+ ----------
+ • Keep both server windows open while playing
+ • You can minimize them but don't close
+ • Share NETWORK URL with friends, not localhost
+ • Everyone must be on the SAME WiFi
+
+
+================================================================================
+                    For detailed help, see README_GAME_LAUNCHER.md
+================================================================================

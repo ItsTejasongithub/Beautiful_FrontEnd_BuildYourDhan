@@ -1,0 +1,322 @@
+import express from 'express';
+import { createServer } from 'http';
+import { Server, Socket } from 'socket.io';
+import cors from 'cors';
+import { RoomManager } from './rooms/roomManager';
+import { GameSyncManager } from './game/gameSync';
+import {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  InterServerEvents,
+  SocketData,
+} from './types';
+import * as os from 'os';
+
+const app = express();
+const httpServer = createServer(app);
+
+// CORS configuration for local network
+app.use(cors());
+
+// Socket.io setup
+const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
+  httpServer,
+  {
+    cors: {
+      origin: '*', // Allow all origins in local network
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
+  }
+);
+
+// Initialize managers
+const roomManager = new RoomManager();
+const gameSyncManager = new GameSyncManager(io, roomManager);
+
+// Get local network IP address
+function getLocalNetworkIP(): string {
+  const interfaces = os.networkInterfaces();
+  let fallbackIP = '';
+
+  for (const name of Object.keys(interfaces)) {
+    const nets = interfaces[name];
+    if (!nets) continue;
+
+    for (const net of nets) {
+      // Skip internal and non-IPv4 addresses
+      if (net.family === 'IPv4' && !net.internal) {
+        const ip = net.address;
+
+        // Prefer 192.168.x.x (most common home network)
+        if (ip.startsWith('192.168.')) {
+          return ip;
+        }
+
+        // Fallback to 10.x.x.x
+        if (ip.startsWith('10.') && !fallbackIP) {
+          fallbackIP = ip;
+        }
+
+        // Last resort: any other IP (but avoid 172.x which are often virtual)
+        if (!fallbackIP && !ip.startsWith('172.')) {
+          fallbackIP = ip;
+        }
+
+        // Very last resort: even 172.x
+        if (!fallbackIP) {
+          fallbackIP = ip;
+        }
+      }
+    }
+  }
+  return fallbackIP || 'localhost';
+}
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', message: 'BullRun Server is running!' });
+});
+
+// Socket.io connection handling
+io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>) => {
+  console.log(`🔌 Client connected: ${socket.id}`);
+
+  // Create room
+  socket.on('createRoom', (data, callback) => {
+    try {
+      const roomId = roomManager.createRoom(socket.id, data.playerName);
+
+      // Store socket data
+      socket.data.roomId = roomId;
+      socket.data.playerId = socket.id;
+      socket.data.playerName = data.playerName;
+
+      // Join socket room
+      socket.join(roomId);
+
+      callback({ success: true, roomId });
+
+      console.log(`🎮 Room ${roomId} created by ${data.playerName}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create room';
+      callback({ success: false, error: errorMessage });
+    }
+  });
+
+  // Join room
+  socket.on('joinRoom', (data, callback) => {
+    try {
+      const result = roomManager.joinRoom(data.roomId, socket.id, data.playerName);
+
+      if (!result.success) {
+        callback({ success: false, error: result.error });
+        return;
+      }
+
+      // Store socket data
+      socket.data.roomId = data.roomId;
+      socket.data.playerId = socket.id;
+      socket.data.playerName = data.playerName;
+
+      // Join socket room
+      socket.join(data.roomId);
+
+      const room = result.room!;
+      const players = Array.from(room.players.values());
+
+      // Send success to joining player
+      callback({
+        success: true,
+        players,
+        adminSettings: room.adminSettings,
+      });
+
+      // Notify others in the room
+      socket.to(data.roomId).emit('playerJoined', {
+        player: room.players.get(socket.id)!,
+      });
+
+      // Broadcast updated leaderboard to everyone in room
+      gameSyncManager.broadcastLeaderboard(data.roomId);
+
+      // If the game has already started, send the current gameState to the joining socket so they sync (cards, quotes, etc.)
+      if (room.gameState.isStarted) {
+        socket.emit('gameStateUpdate', { gameState: room.gameState });
+      }
+
+      console.log(`👥 ${data.playerName} joined room ${data.roomId}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to join room';
+      callback({ success: false, error: errorMessage });
+    }
+  });
+
+  // Leave room
+  socket.on('leaveRoom', () => {
+    handlePlayerLeave(socket);
+  });
+
+  // Start game (host only)
+  socket.on('startGame', (data, callback) => {
+    try {
+      const roomId = socket.data.roomId;
+      if (!roomId) {
+        callback({ success: false, error: 'Not in a room' });
+        return;
+      }
+
+      const room = roomManager.getRoom(roomId);
+      if (!room) {
+        callback({ success: false, error: 'Room not found' });
+        return;
+      }
+
+      if (room.hostId !== socket.id) {
+        callback({ success: false, error: 'Only host can start the game' });
+        return;
+      }
+
+      const result = roomManager.startGame(roomId, data.adminSettings);
+
+      if (!result.success) {
+        callback({ success: false, error: result.error });
+        return;
+      }
+
+      // If host provided initial game state (selected assets / quotes), store it on the room
+      if (data.initialGameState) {
+        if (data.initialGameState.selectedAssets) {
+          room.gameState.selectedAssets = data.initialGameState.selectedAssets;
+        }
+        if (data.initialGameState.assetUnlockSchedule) {
+          room.gameState.assetUnlockSchedule = data.initialGameState.assetUnlockSchedule;
+        }
+        if (data.initialGameState.yearlyQuotes) {
+          room.gameState.yearlyQuotes = data.initialGameState.yearlyQuotes;
+        }
+      }
+
+      callback({ success: true });
+
+      // Broadcast game started to all players
+      io.to(roomId).emit('gameStarted', {
+        gameState: room.gameState,
+        adminSettings: data.adminSettings,
+      });
+
+      // Broadcast initial leaderboard so UI shows up immediately
+      gameSyncManager.broadcastLeaderboard(roomId);
+
+      // Start server-side time progression (3 seconds = 1 month)
+      const MONTH_DURATION_MS = 3000;
+      const interval = gameSyncManager.startTimeProgression(roomId, MONTH_DURATION_MS);
+      if (interval) {
+        room.timeProgressionInterval = interval;
+      }
+
+      console.log(`🚀 Game started in room ${roomId}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start game';
+      callback({ success: false, error: errorMessage });
+    }
+  });
+
+  // Toggle pause (host only)
+  socket.on('togglePause', () => {
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+
+    const room = roomManager.getRoom(roomId);
+    if (!room || room.hostId !== socket.id) return;
+
+    gameSyncManager.handleTogglePause(socket, roomId);
+  });
+
+  // Player state update (networth, portfolio)
+  socket.on('updatePlayerState', (data) => {
+    const playerId = socket.data.playerId;
+    if (!playerId) return;
+
+    gameSyncManager.handlePlayerStateUpdate(
+      socket,
+      playerId,
+      data.networth,
+      data.portfolioBreakdown
+    );
+  });
+
+  // Quiz started
+  socket.on('quizStarted', (data) => {
+    const playerId = socket.data.playerId;
+    if (!playerId) return;
+
+    gameSyncManager.handleQuizStarted(socket, playerId, data.quizCategory);
+  });
+
+  // Quiz finished
+  socket.on('quizFinished', (data) => {
+    const playerId = socket.data.playerId;
+    if (!playerId) return;
+
+    gameSyncManager.handleQuizCompleted(socket, playerId, data.quizCategory);
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log(`🔌 Client disconnected: ${socket.id}`);
+    handlePlayerLeave(socket);
+  });
+});
+
+// Helper function to handle player leaving
+function handlePlayerLeave(socket: Socket) {
+  const playerId = socket.data.playerId;
+  if (!playerId) return;
+
+  const result = roomManager.leaveRoom(playerId);
+
+  if (result.roomId) {
+    // Notify other players
+    socket.to(result.roomId).emit('playerLeft', {
+      playerId,
+    });
+
+    // Broadcast updated leaderboard
+    gameSyncManager.broadcastLeaderboard(result.roomId);
+
+    // If host left, notify and close room
+    if (result.wasHost) {
+      io.to(result.roomId).emit('error', {
+        message: 'Host left the game. Room closed.',
+      });
+    }
+
+    console.log(`👋 Player ${socket.data.playerName} left room ${result.roomId}`);
+  }
+}
+
+// Cleanup old rooms every hour
+setInterval(() => {
+  roomManager.cleanupOldRooms();
+}, 60 * 60 * 1000);
+
+// Start server
+const PORT = process.env.PORT || 3001;
+const localIP = getLocalNetworkIP();
+
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log('\n🎮 ════════════════════════════════════════════════════════');
+  console.log('   BULLRUN - Multiplayer Server');
+  console.log('   ════════════════════════════════════════════════════════');
+  console.log(`   Status: ✅ Running`);
+  console.log(`   Local:  http://localhost:${PORT}`);
+  console.log(`   Network: http://${localIP}:${PORT}`);
+  console.log('   ════════════════════════════════════════════════════════');
+  console.log('   📱 Share the Network URL with players on your network!');
+  console.log('   ════════════════════════════════════════════════════════\n');
+});
