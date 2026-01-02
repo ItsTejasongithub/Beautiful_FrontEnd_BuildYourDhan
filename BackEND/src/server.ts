@@ -12,6 +12,10 @@ import {
 } from './types';
 import * as os from 'os';
 
+// Performance: Reduce logging for better performance
+const VERBOSE_LOGGING = false; // Set to true only for debugging
+const log = VERBOSE_LOGGING ? console.log.bind(console) : () => {};
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -82,9 +86,49 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'BullRun Server is running!' });
 });
 
+// DEV-ONLY: Trigger game end for all rooms or a specific room
+// Only enabled when NODE_ENV is not 'production' to avoid accidental use
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/debug/endAll', (req, res) => {
+    try {
+      const rooms = roomManager.getAllRooms();
+      rooms.forEach(room => {
+        // Set final state (20 years, month 12)
+        room.gameState.currentYear = 20;
+        room.gameState.currentMonth = 12;
+        room.gameState.isStarted = false;
+        // Emit gameEnded to all sockets in the room
+        io.to(room.id).emit('gameEnded', { finalYear: 20, finalMonth: 12 });
+      });
+      res.json({ success: true, roomsAffected: rooms.length });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'unknown' });
+    }
+  });
+
+  app.post('/debug/endRoom', (req, res) => {
+    try {
+      const roomId = (req.query.roomId as string) || null;
+      if (!roomId) return res.status(400).json({ success: false, error: 'roomId query param required' });
+      const room = roomManager.getRoom(roomId);
+      if (!room) return res.status(404).json({ success: false, error: 'room not found' });
+
+      room.gameState.currentYear = 20;
+      room.gameState.currentMonth = 12;
+      room.gameState.isStarted = false;
+
+      io.to(roomId).emit('gameEnded', { finalYear: 20, finalMonth: 12 });
+
+      res.json({ success: true, roomId });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'unknown' });
+    }
+  });
+}
+
 // Socket.io connection handling
 io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>) => {
-  console.log(`🔌 Client connected: ${socket.id}`);
+  log(`🔌 Client connected: ${socket.id}`);
 
   // Create room
   socket.on('createRoom', (data, callback) => {
@@ -188,7 +232,7 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         return;
       }
 
-      // If host provided initial game state (selected assets / quotes), store it on the room
+      // If host provided initial game state (selected assets / quotes / questions), store it on the room
       if (data.initialGameState) {
         if (data.initialGameState.selectedAssets) {
           room.gameState.selectedAssets = data.initialGameState.selectedAssets;
@@ -198,6 +242,9 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         }
         if (data.initialGameState.yearlyQuotes) {
           room.gameState.yearlyQuotes = data.initialGameState.yearlyQuotes;
+        }
+        if (data.initialGameState.quizQuestionIndices) {
+          room.gameState.quizQuestionIndices = data.initialGameState.quizQuestionIndices;
         }
       }
 
@@ -309,7 +356,7 @@ setInterval(() => {
 const PORT = process.env.PORT || 3001;
 const localIP = getLocalNetworkIP();
 
-httpServer.listen(PORT, '0.0.0.0', () => {
+httpServer.listen(PORT as number, '0.0.0.0', () => {
   console.log('\n🎮 ════════════════════════════════════════════════════════');
   console.log('   BULLRUN - Multiplayer Server');
   console.log('   ════════════════════════════════════════════════════════');

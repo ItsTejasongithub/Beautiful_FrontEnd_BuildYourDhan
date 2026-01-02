@@ -8,6 +8,8 @@ interface FixedDepositCardProps {
   fixedDeposits: FixedDeposit[];
   pocketCash: number;
   currentRates: { threeMonth: number; oneYear: number; threeYear: number };
+  currentYear: number;
+  currentMonth: number;
   onCreate: (amount: number, duration: 3 | 12 | 36, rate: number) => void;
   onCollect: (fdId: string) => void;
   onBreak: (fdId: string) => void;
@@ -17,10 +19,26 @@ export const FixedDepositCard: React.FC<FixedDepositCardProps> = ({
   fixedDeposits,
   pocketCash,
   currentRates,
+  currentYear,
+  currentMonth,
   onCreate,
   onCollect,
   onBreak
 }) => {
+  // Calculate accrued value with interest earned so far
+  const calculateAccruedValue = (fd: FixedDeposit) => {
+    const monthsElapsed = (currentYear - fd.startYear) * 12 + (currentMonth - fd.startMonth);
+    const totalMonths = fd.duration;
+    const progress = Math.min(monthsElapsed / totalMonths, 1);
+    const fullMaturityValue = fd.amount * (1 + fd.interestRate / 100);
+    const accruedInterest = (fullMaturityValue - fd.amount) * progress;
+    return fd.amount + accruedInterest;
+  };
+
+  const calculatePnL = (fd: FixedDeposit) => {
+    const accruedValue = calculateAccruedValue(fd);
+    return accruedValue - fd.amount;
+  };
   const [showInput, setShowInput] = useState(false);
   const [inputAmount, setInputAmount] = useState('');
   const [selectedDuration, setSelectedDuration] = useState<3 | 12 | 36>(12);
@@ -161,33 +179,49 @@ export const FixedDepositCard: React.FC<FixedDepositCardProps> = ({
       )}
 
       <div className="fd-list">
-        {fixedDeposits.map(fd => (
-          <div
-            key={fd.id}
-            className={`fd-item ${fd.isMatured ? 'matured' : ''}`}
-          >
-            <div className="fd-info">
-              <span>₹{fd.amount.toFixed(0)}</span>
-              <span>{fd.duration === 3 ? '3Mo' : fd.duration === 12 ? '1Yr' : '3Yr'}</span>
-              <span>{fd.interestRate}%</span>
+        {fixedDeposits.map(fd => {
+          const pnl = calculatePnL(fd);
+          const pnlPercentage = (pnl / fd.amount) * 100;
+          const monthsElapsed = (currentYear - fd.startYear) * 12 + (currentMonth - fd.startMonth);
+          const progressPercentage = Math.min((monthsElapsed / fd.duration) * 100, 100);
+
+          return (
+            <div
+              key={fd.id}
+              className={`fd-item ${fd.isMatured ? 'matured' : ''}`}
+            >
+              <div className="fd-progress-bar">
+                <div
+                  className="fd-progress-fill"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+              <div className="fd-info">
+                <span>₹{fd.amount.toFixed(0)}</span>
+                <span>{fd.duration === 3 ? '3Mo' : fd.duration === 12 ? '1Yr' : '3Yr'}</span>
+                <span>{fd.interestRate}%</span>
+                <div className="fd-pnl" style={{ color: pnl >= 0 ? '#288d00ff' : 'rgba(175, 1, 1, 1)' }}>
+                  {pnl >= 0 ? '+' : ''}₹{pnl.toFixed(0)} ({pnl >= 0 ? '+' : ''}{pnlPercentage.toFixed(2)}%)
+                </div>
+                {fd.isMatured ? (
+                  <button
+                    className="collect-btn"
+                    onClick={() => onCollect(fd.id)}
+                  >
+                    Collect
+                  </button>
+                ) : (
+                  <button
+                    className="break-btn"
+                    onClick={() => handleBreakClick(fd.id)}
+                  >
+                    Break
+                  </button>
+                )}
+              </div>
             </div>
-            {fd.isMatured ? (
-              <button
-                className="collect-btn"
-                onClick={() => onCollect(fd.id)}
-              >
-                Collect
-              </button>
-            ) : (
-              <button
-                className="break-btn"
-                onClick={() => handleBreakClick(fd.id)}
-              >
-                Break
-              </button>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {fixedDeposits.length >= 3 && (

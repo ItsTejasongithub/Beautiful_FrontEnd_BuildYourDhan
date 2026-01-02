@@ -54,43 +54,16 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4 Address"') do (
 )
 :ip_found
 
-REM If not using 192.168.0.67, prompt for static IP setup
+REM If not using 192.168.0.67, show info
 if "!FOUND_67!"=="NO" (
     if not "!IP!"=="" (
         echo.
         echo Current IP: !IP!
         echo.
-        echo For better experience, use STATIC IP: 192.168.0.67
-        echo This prevents IP changes after restarts.
+        echo TIP: For stable connection, use STATIC IP: 192.168.0.67
+        echo Run SET_STATIC_IP_ETHERNET.bat as Admin to set it permanently
         echo.
-        echo Want to set static IP now? (Needs Admin)
-        choice /C YN /M "Set to 192.168.0.67" /T 10 /D N >nul 2>&1
-
-        if !ERRORLEVEL!==1 (
-            REM Try WiFi first
-            netsh interface ip set address name="Wi-Fi" static 192.168.0.67 255.255.255.0 192.168.0.1 >nul 2>&1
-            if !ERRORLEVEL! EQU 0 (
-                netsh interface ip set dns name="Wi-Fi" static 192.168.0.1 >nul 2>&1
-                netsh interface ip add dns name="Wi-Fi" 8.8.8.8 index=2 >nul 2>&1
-                echo Static IP set: 192.168.0.67 (WiFi)
-                set "IP=192.168.0.67"
-                timeout /t 2 >nul
-            ) else (
-                REM Try Ethernet
-                netsh interface ip set address name="Ethernet" static 192.168.0.67 255.255.255.0 192.168.0.1 >nul 2>&1
-                if !ERRORLEVEL! EQU 0 (
-                    netsh interface ip set dns name="Ethernet" static 192.168.0.1 >nul 2>&1
-                    netsh interface ip add dns name="Ethernet" 8.8.8.8 index=2 >nul 2>&1
-                    echo Static IP set: 192.168.0.67 (Ethernet)
-                    set "IP=192.168.0.67"
-                    timeout /t 2 >nul
-                ) else (
-                    echo Failed! Using: !IP!
-                    echo (Re-run as Admin or use SET_STATIC_IP_ETHERNET.bat)
-                    timeout /t 3
-                )
-            )
-        )
+        timeout /t 2 >nul
     )
 )
 

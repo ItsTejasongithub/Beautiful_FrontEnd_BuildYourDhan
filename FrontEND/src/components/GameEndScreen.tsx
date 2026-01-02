@@ -1,10 +1,13 @@
 import React from 'react';
 import './GameEndScreen.css';
-import { GameState } from '../types';
+import { GameState, AssetData } from '../types';
+import { calculateNetworth, calculatePortfolioBreakdown } from '../utils/networthCalculator';
 
 interface GameEndScreenProps {
   gameState: GameState;
   isMultiplayer: boolean;
+  assetDataMap: { [key: string]: AssetData[] };
+  calendarYear: number;
   leaderboardData?: Array<{
     playerId: string;
     playerName: string;
@@ -24,52 +27,12 @@ interface GameEndScreenProps {
 const GameEndScreen: React.FC<GameEndScreenProps> = ({
   gameState,
   isMultiplayer,
+  assetDataMap,
+  calendarYear,
   leaderboardData,
   onReturnToMenu,
 }) => {
   const [isPortfolioExpanded, setIsPortfolioExpanded] = React.useState(false);
-
-  const calculateNetworth = () => {
-    let total = gameState.pocketCash + gameState.savingsAccount.balance;
-
-    // Add FD values (using amount since maturedAmount doesn't exist)
-    gameState.fixedDeposits.forEach(fd => {
-      const monthsElapsed = (fd.maturityYear - fd.startYear) * 12 + (fd.maturityMonth - fd.startMonth);
-      const maturedValue = fd.amount * Math.pow(1 + fd.interestRate, monthsElapsed / 12);
-      total += maturedValue;
-    });
-
-    // Add holdings values
-    const holdings = gameState.holdings;
-
-    // Physical and digital gold
-    total += holdings.physicalGold.totalInvested;
-    total += holdings.digitalGold.totalInvested;
-
-    // Index and mutual funds
-    total += holdings.indexFund.totalInvested;
-    total += holdings.mutualFund.totalInvested;
-
-    // Stocks
-    Object.values(holdings.stocks).forEach(holding => {
-      total += holding.totalInvested;
-    });
-
-    // Crypto
-    Object.values(holdings.crypto).forEach(holding => {
-      total += holding.totalInvested;
-    });
-
-    // Commodity
-    total += holdings.commodity.totalInvested;
-
-    // REITs
-    Object.values(holdings.reits).forEach(holding => {
-      total += holding.totalInvested;
-    });
-
-    return total;
-  };
 
   const getAssetCategoryColor = (category: string): string => {
     const colors: { [key: string]: string } = {
@@ -79,42 +42,41 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({
       stocks: '#FF5722',
       crypto: '#9C27B0',
       commodity: '#795548',
+      commodities: '#795548',
+      funds: '#00BCD4',
       indexFund: '#00BCD4',
       mutualFund: '#3F51B5',
       reits: '#FF9800',
+      savings: '#4CAF50',
     };
     return colors[category] || '#138808';
-  };
-
-  const getPortfolioBreakdown = () => {
-    const holdings = gameState.holdings;
-
-    return {
-      cash: gameState.pocketCash + gameState.savingsAccount.balance,
-      fixedDeposits: gameState.fixedDeposits.reduce((sum, fd) => {
-        const monthsElapsed = (fd.maturityYear - fd.startYear) * 12 + (fd.maturityMonth - fd.startMonth);
-        const maturedValue = fd.amount * Math.pow(1 + fd.interestRate, monthsElapsed / 12);
-        return sum + maturedValue;
-      }, 0),
-      gold: holdings.physicalGold.totalInvested + holdings.digitalGold.totalInvested,
-      stocks: Object.values(holdings.stocks).reduce((sum, h) => sum + h.totalInvested, 0),
-      crypto: Object.values(holdings.crypto).reduce((sum, h) => sum + h.totalInvested, 0),
-      commodity: holdings.commodity.totalInvested,
-      indexFund: holdings.indexFund.totalInvested,
-      mutualFund: holdings.mutualFund.totalInvested,
-      reits: Object.values(holdings.reits).reduce((sum, h) => sum + h.totalInvested, 0),
-    };
   };
 
   const formatCurrency = (amount: number) => {
     return `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
   };
 
-  const startingCash = 100000; // Starting amount
-  const finalNetworth = calculateNetworth();
+  // Calculate total invested for each category (for P&L calculation)
+  const getInvestedBreakdown = () => {
+    const holdings = gameState.holdings;
+    return {
+      cash: gameState.pocketCash,
+      savings: gameState.savingsAccount.balance,
+      gold: holdings.physicalGold.totalInvested + holdings.digitalGold.totalInvested,
+      funds: holdings.indexFund.totalInvested + holdings.mutualFund.totalInvested,
+      stocks: Object.values(holdings.stocks).reduce((sum, h) => sum + h.totalInvested, 0),
+      crypto: Object.values(holdings.crypto).reduce((sum, h) => sum + h.totalInvested, 0),
+      commodities: holdings.commodity.totalInvested,
+      reits: Object.values(holdings.reits).reduce((sum, h) => sum + h.totalInvested, 0),
+    };
+  };
+
+  const startingCash = gameState.adminSettings?.initialPocketCash || 100000; // Starting amount
+  const finalNetworth = calculateNetworth(gameState, assetDataMap, calendarYear);
   const profit = finalNetworth - startingCash;
   const profitPercentage = ((profit / startingCash) * 100).toFixed(2);
-  const breakdown = getPortfolioBreakdown();
+  const breakdown = calculatePortfolioBreakdown(gameState, assetDataMap, calendarYear);
+  const investedBreakdown = getInvestedBreakdown();
 
   return (
     <div className="game-end-screen">
@@ -159,9 +121,9 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({
                   const percentage = ((value / finalNetworth) * 100).toFixed(1);
                   const color = getAssetCategoryColor(key);
 
-                  // For P&L calculation - invested is same as current for now (totalInvested)
-                  const invested = value;
+                  // Calculate P&L: current market value vs invested amount
                   const currentValue = value;
+                  const invested = investedBreakdown[key as keyof typeof investedBreakdown] || 0;
                   const pnl = currentValue - invested;
                   const pnlPercentage = invested > 0 ? ((pnl / invested) * 100).toFixed(1) : '0.0';
 
@@ -213,11 +175,11 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({
               {leaderboardData && leaderboardData.length > 0 ? (
                 leaderboardData.map((player, index) => (
                   <div key={player.playerId} className={`leaderboard-row rank-${index + 1}`}>
-                    <div className="rank-badge">
-                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                    </div>
                     <div className="player-info">
-                      <div className="player-name">{player.playerName}</div>
+                      <div className="player-name">
+                        {index === 0 ? '🥇 ' : index === 1 ? '🥈 ' : index === 2 ? '🥉 ' : `#${index + 1} `}
+                        {player.playerName}
+                      </div>
                       <div className="player-networth">{formatCurrency(player.networth)}</div>
                     </div>
                     {player.portfolioBreakdown && (

@@ -32,6 +32,8 @@ export const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({
     initialSettings?.selectedCategories || ['BANKING']
   );
   const [hideCurrentYear, setHideCurrentYear] = useState(initialSettings?.hideCurrentYear || false);
+  const [initialPocketCash, setInitialPocketCash] = useState(initialSettings?.initialPocketCash || 100000);
+  const [recurringIncome, setRecurringIncome] = useState(initialSettings?.recurringIncome || 50000);
   const [calculatedStartYear, setCalculatedStartYear] = useState<number>(2005);
   const [latestAssetYear, setLatestAssetYear] = useState<number>(2005);
 
@@ -67,7 +69,9 @@ export const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({
     const settings: AdminSettings = {
       selectedCategories,
       gameStartYear: calculatedStartYear,
-      hideCurrentYear
+      hideCurrentYear,
+      initialPocketCash,
+      recurringIncome
     };
 
     if (isMultiplayerMode && onApply) {
@@ -119,6 +123,49 @@ export const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h3>Financial Settings</h3>
+          <p className="section-description">
+            Configure starting cash and recurring income for all players.
+          </p>
+
+          <div className="financial-inputs">
+            <div className="input-group">
+              <label htmlFor="initialPocketCash">Initial Pocket Cash</label>
+              <div className="input-with-prefix">
+                <span className="currency-prefix">₹</span>
+                <input
+                  id="initialPocketCash"
+                  type="number"
+                  min="10000"
+                  max="10000000"
+                  step="10000"
+                  value={initialPocketCash}
+                  onChange={(e) => setInitialPocketCash(Number(e.target.value))}
+                />
+              </div>
+              <small>Starting cash amount for each player</small>
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="recurringIncome">Income Every 6 Months</label>
+              <div className="input-with-prefix">
+                <span className="currency-prefix">₹</span>
+                <input
+                  id="recurringIncome"
+                  type="number"
+                  min="0"
+                  max="1000000"
+                  step="5000"
+                  value={recurringIncome}
+                  onChange={(e) => setRecurringIncome(Number(e.target.value))}
+                />
+              </div>
+              <small>Amount added to pocket cash every 6 months</small>
+            </div>
           </div>
         </div>
 

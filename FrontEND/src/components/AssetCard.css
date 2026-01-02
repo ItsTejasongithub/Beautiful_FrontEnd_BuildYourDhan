@@ -2,15 +2,39 @@
   background: linear-gradient(135deg, #E8DCC4 0%, #D4C5A9 100%);
   border: 3px solid #8B7355;
   border-radius: 8px;
-  padding: 8px;
+  padding: clamp(6px, 0.5vw, 10px);
   color: #3D3021;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  width: 300px;
-  min-height: 280px;
+  width: clamp(240px, 15.6vw, 320px);
+  height: clamp(260px, 30vh, 340px);
+  min-height: clamp(260px, 30vh, 340px);
+  max-height: clamp(260px, 30vh, 340px);
   display: flex;
   flex-direction: column;
   position: relative;
   transition: transform 0.1s ease;
+  overflow: visible;
+}
+
+/* Tablet: Adjust card size */
+@media (max-width: 1024px) {
+  .asset-card {
+    width: clamp(220px, 30vw, 280px);
+    height: clamp(200px, 28vh, 260px);
+    min-height: clamp(200px, 28vh, 260px);
+    max-height: clamp(200px, 28vh, 260px);
+  }
+}
+
+/* Mobile: Full width cards in single column */
+@media (max-width: 768px) {
+  .asset-card {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    min-height: 280px;
+    max-height: none;
+  }
 }
 
 /* Shake animation for insufficient funds */
@@ -33,6 +57,8 @@
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  position: relative;
+  z-index: 1;
 }
 
 .stock-card .card-title {
@@ -42,8 +68,29 @@
 
 /* Savings Account Specific */
 .savings-card {
-  width: 300px;
-  min-height: 280px;
+  width: clamp(240px, 15.6vw, 320px);
+  height: clamp(260px, 30vh, 340px);
+  min-height: clamp(260px, 30vh, 340px);
+  max-height: clamp(260px, 30vh, 340px);
+}
+
+@media (max-width: 1024px) {
+  .savings-card {
+    width: clamp(220px, 30vw, 280px);
+    height: clamp(200px, 28vh, 260px);
+    min-height: clamp(200px, 28vh, 260px);
+    max-height: clamp(200px, 28vh, 260px);
+  }
+}
+
+@media (max-width: 768px) {
+  .savings-card {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    min-height: 280px;
+    max-height: none;
+  }
 }
 
 .balance-display {
@@ -68,8 +115,13 @@
 
 .button-group {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-top: auto;
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 .action-button {
@@ -81,6 +133,8 @@
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 11px;
+  position: relative;
+  z-index: 10;
 }
 
 .deposit-btn {
@@ -134,14 +188,14 @@
 
 .max-button {
   position: absolute;
-  right: 6px;
+  right: 2px;
   top: 50%;
   transform: translateY(-50%);
   padding: 4px 10px;
   background: #D4A574;
   color: #3D3021;
   border: 1px solid #B8935E;
-  border-radius: 3px;
+  border-radius: 25px;
   font-weight: 600;
   cursor: pointer;
   font-size: 10px;
@@ -184,7 +238,19 @@
 
 /* Fixed Deposit Specific */
 .fd-card {
-  min-height: 280px;
+  min-height: clamp(260px, 30vh, 340px);
+}
+
+@media (max-width: 1024px) {
+  .fd-card {
+    min-height: clamp(200px, 28vh, 260px);
+  }
+}
+
+@media (max-width: 768px) {
+  .fd-card {
+    min-height: 280px;
+  }
 }
 
 .fd-rates {
@@ -255,38 +321,78 @@
 
 .fd-item {
   background: rgba(255, 255, 255, 0.2);
-  padding: 8px;
+  padding: 6px 8px;
   border-radius: 4px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.fd-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.fd-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(55, 194, 0, 0.692) 0%, rgba(62, 218, 0, 0.61) 100%);
+  transition: width 0.5s ease-out;
+  border-radius: 4px 0 0 4px;
 }
 
 .fd-item.matured {
   background: rgba(34, 197, 94, 0.3);
   border: 2px solid #22c55e;
-  display: flex;
-  gap: 20px;
   font-size: 12px;
   font-weight: 600;
 }
 
+.fd-item.matured .fd-progress-fill {
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.4) 0%, rgba(34, 197, 94, 0.2) 100%);
+}
+
 .fd-info {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   font-size: 10px;
   font-weight: 600;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.fd-pnl {
+  font-size: 8px;
+  font-weight: 600;
+  padding: 2px 3px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  text-align: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .collect-btn {
   background: #5D8A66;
   color: #FEFDF8;
-  padding: 4px 1px;
-  font-size: 10px;
+  padding: 3px 6px;
+  font-size: 8px;
   flex-shrink: 0;
-  width: 50px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 600;
+  border: none;
+  cursor: pointer;
 }
 
 .collect-btn:hover {
@@ -297,13 +403,13 @@
 .break-btn {
   background: #A85C5C;
   color: #FEFDF8;
-  border: 2px solid #8B4949;
-  padding: 4px 1px;
-  font-size: 10px;
+  border: 1px solid #8B4949;
+  padding: 3px 6px;
+  font-size: 8px;
   flex-shrink: 0;
-  width: 50px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .break-btn:hover {
@@ -318,29 +424,340 @@
   opacity: 0.8;
 }
 
-/* Tradeable Asset Card */
+/* Tradeable Asset Card - Unified Settings for ALL tradeable assets */
 .tradeable-card {
-  width: 250px;
-  min-height: 280px;
-  gap: 4px;
+  width: clamp(200px, 13vw, 260px);
+  height: clamp(260px, 30vh, 340px);
+  min-height: clamp(260px, 30vh, 340px);
+  max-height: clamp(260px, 30vh, 340px);
+  padding: clamp(6px, 0.5vw, 10px);
+  gap: 3px;
+  box-sizing: border-box;
 }
 
-/* Compact Stock Card */
-.tradeable-card.stock-card {
-  width: 250px;
-  min-height: 280px;
-  padding: 8px;
+@media (max-width: 1024px) {
+  .tradeable-card {
+    width: clamp(200px, 28vw, 250px);
+    height: clamp(200px, 28vh, 260px);
+    min-height: clamp(200px, 28vh, 260px);
+    max-height: clamp(200px, 28vh, 260px);
+  }
+}
+
+@media (max-width: 768px) {
+  .tradeable-card {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    min-height: 280px;
+    max-height: none;
+  }
+}
+
+/* Row 2: Price and Price Change % */
+.row-2-price-change {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.current-price-large {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.current-price-large.positive {
+  color: #5D8A66;
+}
+
+.current-price-large.negative {
+  color: #A85C5C;
+}
+
+.price-change-percent {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.price-change-percent.positive {
+  color: #5D8A66;
+  background: rgba(93, 138, 102, 0.15);
+}
+
+.price-change-percent.negative {
+  color: #A85C5C;
+  background: rgba(168, 92, 92, 0.15);
+}
+
+/* Row 3: Stats (P&L prominent, AVG/QTY on hover) */
+.row-3-stats {
+  position: relative;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  background: rgba(139, 115, 85, 0.12);
+  border-radius: 5px;
+  border: 1px solid rgba(139, 115, 85, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.row-3-stats:hover {
+  background: rgba(139, 115, 85, 0.18);
+  border-color: rgba(139, 115, 85, 0.35);
+}
+
+/* Default State: Show only P&L prominently */
+.stat-item-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 3px;
+  transition: opacity 0.3s ease;
+}
+
+.row-3-stats:hover .stat-item-main {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Hide the default QTY stat-item (not inside stat-details) on hover */
+.row-3-stats > .stat-item {
+  transition: opacity 0.3s ease;
+}
+
+.row-3-stats:hover > .stat-item {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stat-value-main {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.stat-item-main.profit .stat-value-main {
+  color: #5D8A66;
+}
+
+.stat-item-main.loss .stat-value-main {
+  color: #A85C5C;
+}
+
+/* Hover State: Show all three stats */
+.stat-details {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.row-3-stats:hover .stat-details {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #5D4E42;
+  opacity: 0.7;
+}
+
+.stat-item.profit .stat-label {
+  color: #4A6B52;
+}
+
+.stat-item.loss .stat-label {
+  color: #8B4949;
+}
+
+.stat-value {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #3D3021;
+  line-height: 1.2;
+}
+
+.stat-item.profit .stat-value {
+  color: #5D8A66;
+}
+
+.stat-item.loss .stat-value {
+  color: #A85C5C;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(139, 115, 85, 0.25);
+  margin: 0 2px;
+}
+
+/* Stock Card uses unified .tradeable-card settings - no overrides needed */
+
+/* New Card Header Layout */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.price-change-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.price-change-badge.positive {
+  color: #5D8A66;
+  background: rgba(93, 138, 102, 0.15);
+}
+
+.price-change-badge.negative {
+  color: #A85C5C;
+  background: rgba(168, 92, 92, 0.15);
+}
+
+/* P/L Badge - Center Top */
+.pl-badge {
+  position: absolute;
+  top: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1.3;
+  z-index: 2;
+  white-space: nowrap;
+}
+
+.pl-badge.profit {
+  background: rgba(93, 138, 102, 0.9);
+  color: #FEFDF8;
+  border: 1px solid #5D8A66;
+}
+
+.pl-badge.loss {
+  background: rgba(168, 92, 92, 0.9);
+  color: #FEFDF8;
+  border: 1px solid #A85C5C;
 }
 
 .chart-container {
-  margin-top: 20px;
-  height: 80px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  height: 75px;
+  flex-shrink: 0;
 }
 
 .stock-card .chart-container {
   height: 70px;
   margin-bottom: 4px;
+}
+
+/* Price and Holdings Row */
+.price-holdings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: rgba(139, 115, 85, 0.15);
+  padding: 6px;
+  border-radius: 4px;
+  margin-top: 8px;
+  border: 1px solid rgba(139, 115, 85, 0.3);
+  box-sizing: border-box;
+}
+
+.price-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+}
+
+.price-label,
+.avg-price-label {
+  font-size: 8px;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+
+.price-value {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.price-value.positive {
+  color: #5D8A66;
+}
+
+.price-value.negative {
+  color: #A85C5C;
+}
+
+.avg-price-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3D3021;
+}
+
+.holdings-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.holdings-label {
+  font-size: 8px;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+
+.holdings-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #3D3021;
 }
 
 .price-info {
@@ -506,11 +923,16 @@
 .quantity-selector {
   display: flex;
   gap: 4px;
-  margin-top: 20px;
+  margin-top: 6px;
+  margin-bottom: 3px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .stock-card .quantity-selector {
-  gap: 2px;
+  gap: 3px;
+  margin-top: 6px;
   margin-bottom: 3px;
 }
 
@@ -524,10 +946,17 @@
   cursor: pointer;
   font-weight: 600;
   font-size: 10px;
+      min-width: 26px;
+          height: 26px;
+
+
 }
+
 
 .stock-card .qty-btn {
   padding: 3px;
+      min-width: 22px;
+    height: 22px;
   font-size: 8px;
 }
 
@@ -539,13 +968,15 @@
 
 .qty-input {
   flex: 1;
-  padding: 4px;
+  padding: 4px 50px 4px 4px;
   border: 1px solid #8B7355;
   border-radius: 4px;
   font-size: 10px;
   text-align: center;
   background: #FEFDF8;
   color: #3D3021;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .max-qty-btn {
@@ -585,64 +1016,83 @@
 }
 
 /* ============================================ */
-/* RESPONSIVE DESIGN - ONLY YOUR SCREENS */
+/* RESPONSIVE DESIGN - SIMPLE & UNIVERSAL */
 /* ============================================ */
 
-/* External Display - 1920x1080 (Default - no media query needed) */
-/* All default values above are optimized for 1920x1080 */
+/* Base design uses viewport units (vw/vh) to scale automatically */
+/* Works on ALL screens without device-specific media queries! */
+/* Tested on: 1920x1080, 1536x864, 1536x695, 1280x720, etc. */
 
-/* Laptop Screen - 1536x864 */
-@media (max-width: 1536px) {
-  .asset-card {
-    width: 220px;
-    min-height: 250px;
-  }
+/* ============================================ */
+/* UNIVERSAL RESPONSIVE TYPOGRAPHY & SIZING */
+/* ============================================ */
 
-  .savings-card {
-    width: 220px;
-    min-height: 250px;
-  }
+/* Font sizes scale with viewport */
+.card-title {
+  font-size: clamp(10px, 0.8vw, 14px);
+}
 
-  .tradeable-card {
-    width: 220px;
-    min-height: 250px;
-  }
-
-  .tradeable-card.stock-card {
-    width: 220px;
-    min-height: 250px;
-  }
-
-  .fd-card {
-    min-height: 250px;
-  }
-
+@media (max-width: 768px) {
   .card-title {
-    font-size: 11px;
+    font-size: 12px;
   }
+}
 
-  .balance-amount {
-    font-size: 16px;
+.current-price-large {
+  font-size: clamp(16px, 1.2vw, 22px);
+}
+
+@media (max-width: 768px) {
+  .current-price-large {
+    font-size: 18px;
   }
+}
 
-  .action-button {
-    font-size: 10px;
-    padding: 5px 8px;
+.stat-value-main {
+  font-size: clamp(11px, 0.9vw, 16px);
+}
+
+@media (max-width: 768px) {
+  .stat-value-main {
+    font-size: 13px;
   }
+}
 
+.chart-container {
+  height: clamp(60px, 7vh, 80px);
+}
+
+.stock-card .chart-container {
+  height: clamp(55px, 6.5vh, 75px);
+}
+
+@media (max-width: 768px) {
   .chart-container {
-    height: 75px;
+    height: 70px;
   }
 
   .stock-card .chart-container {
     height: 65px;
   }
+}
+
+/* Ensure all text is readable on mobile */
+@media (max-width: 768px) {
+  .balance-amount {
+    font-size: 16px !important;
+  }
 
   .price-value {
-    font-size: 12px;
+    font-size: 13px !important;
   }
 
   .holding-value {
-    font-size: 9px;
+    font-size: 11px !important;
+  }
+
+  .action-button {
+    font-size: 11px !important;
+    padding: 8px 10px !important;
+    min-height: 36px;
   }
 }

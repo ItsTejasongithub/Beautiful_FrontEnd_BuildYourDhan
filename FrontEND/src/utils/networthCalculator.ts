@@ -75,8 +75,8 @@ export function calculateNetworth(
   }
 
   // Commodity
-  if (gameState.holdings.commodity.quantity > 0 && gameState.selectedAssets?.commodityName) {
-    const commodityData = assetDataMap[gameState.selectedAssets.commodityName];
+  if (gameState.holdings.commodity.quantity > 0 && gameState.selectedAssets?.commodity) {
+    const commodityData = assetDataMap[gameState.selectedAssets.commodity];
     if (commodityData) {
       const price = getAssetPriceAtDate(commodityData, calendarYear, gameState.currentMonth);
       currentValue += gameState.holdings.commodity.quantity * price;
@@ -156,8 +156,8 @@ export function calculatePortfolioBreakdown(
   }
 
   // Commodity
-  if (gameState.holdings.commodity.quantity > 0 && gameState.selectedAssets?.commodityName) {
-    const commodityData = assetDataMap[gameState.selectedAssets.commodityName];
+  if (gameState.holdings.commodity.quantity > 0 && gameState.selectedAssets?.commodity) {
+    const commodityData = assetDataMap[gameState.selectedAssets.commodity];
     if (commodityData) {
       const price = getAssetPriceAtDate(commodityData, calendarYear, gameState.currentMonth);
       commoditiesValue += gameState.holdings.commodity.quantity * price;

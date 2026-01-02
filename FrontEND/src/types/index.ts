@@ -14,6 +14,7 @@ export interface GameState {
   assetUnlockSchedule?: AssetUnlockSchedule;
   yearlyQuotes?: string[]; // Array of quotes, one per year (shuffled at game start)
   completedQuizzes?: string[]; // Track which asset categories have completed their quiz
+  quizQuestionIndices?: { [category: string]: number }; // Random question index per category for this session
 }
 
 export interface SelectedAssets {
@@ -82,6 +83,8 @@ export interface AdminSettings {
   selectedCategories: AssetCategory[];
   gameStartYear: number;
   hideCurrentYear: boolean;
+  initialPocketCash: number; // Starting pocket cash amount
+  recurringIncome: number; // Amount added to pocket cash every 6 months
 }
 
 export interface AssetUnlockSchedule {

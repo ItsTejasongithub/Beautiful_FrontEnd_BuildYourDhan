@@ -232,7 +232,7 @@
   grid-template-columns: 8px 110px 1fr auto auto;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding-top: 10px;
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
@@ -521,7 +521,7 @@
 }
 
 .player-networth {
-  font-size: 24px;
+  font-size: 11px;
   font-weight: 800;
   color: #138808;
 }
@@ -529,17 +529,16 @@
 .player-breakdown-mini {
   flex: 2;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
-  padding-left: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 2fr));
+  gap: 20px;
+  padding-left: 10px;
   border-left: 2px solid #e0e0e0;
 }
 
 .mini-asset {
   font-size: 13px;
   display: flex;
-  justify-content: space-between;
-  gap: 5px;
+  gap: 10px;
 }
 
 .mini-asset-name {

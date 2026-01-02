@@ -162,6 +162,11 @@ export class RoomManager {
     return this.rooms.get(roomId);
   }
 
+  // Developer helper: return all rooms (used by debug endpoints/tests)
+  getAllRooms(): Room[] {
+    return Array.from(this.rooms.values());
+  }
+
   getRoomByPlayerId(playerId: string): Room | undefined {
     const roomId = this.playerToRoom.get(playerId);
     return roomId ? this.rooms.get(roomId) : undefined;

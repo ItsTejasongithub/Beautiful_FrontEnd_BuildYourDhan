@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { socketService } from '../services/socketService';
+import { TOTAL_GAME_YEARS } from '../utils/constants';
 import { PlayerInfo, RoomInfo, MultiplayerGameState, MultiplayerMode } from '../types/multiplayer';
 import { AdminSettings } from '../types';
 
@@ -123,7 +124,46 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
     };
 
     const handleGameStateUpdate = (data: { gameState: MultiplayerGameState }) => {
-      setGameState(data.gameState);
+      // Avoid overwriting player-local financial state (pocketCash, holdings, fixedDeposits, etc.)
+      // Server sends full room game state for convenience, but clients must merge only the global/shared parts.
+      setGameState(prev => {
+        if (!prev) return data.gameState;
+
+        const server = data.gameState;
+
+        // Debug: detect server attempts to overwrite player-local financials
+        try {
+          const serverAny = server as any;
+          const prevAny = prev as any;
+
+          if (typeof serverAny.pocketCash !== 'undefined' && serverAny.pocketCash !== prevAny.pocketCash) {
+            console.debug('🔒 Multiplayer: Server pocketCash differs but will NOT overwrite local value', { serverPocketCash: serverAny.pocketCash, localPocketCash: prevAny.pocketCash });
+          }
+
+          if (serverAny.holdings && JSON.stringify(serverAny.holdings) !== JSON.stringify(prevAny.holdings)) {
+            console.debug('🔒 Multiplayer: Server holdings differ but will NOT overwrite local holdings');
+          }
+
+          if (serverAny.fixedDeposits && JSON.stringify(serverAny.fixedDeposits) !== JSON.stringify(prevAny.fixedDeposits)) {
+            console.debug('🔒 Multiplayer: Server fixedDeposits differ but will NOT overwrite local fixedDeposits');
+          }
+        } catch (err) {
+          // Swallow any stringify errors in debug logging
+        }
+
+        return {
+          ...prev,
+          // Global/shared fields that should be synced from server
+          currentYear: server.currentYear,
+          currentMonth: server.currentMonth,
+          isPaused: server.isPaused,
+          pauseReason: server.pauseReason || prev.pauseReason,
+          playersWaitingForQuiz: server.playersWaitingForQuiz || prev.playersWaitingForQuiz,
+          assetUnlockSchedule: server.assetUnlockSchedule || prev.assetUnlockSchedule,
+          yearlyQuotes: server.yearlyQuotes || prev.yearlyQuotes,
+          // Do NOT overwrite: pocketCash, holdings, fixedDeposits, savingsAccount, selectedAssets
+        } as MultiplayerGameState;
+      });
     };
 
     const handleGamePaused = (data: { reason: 'quiz' | 'manual'; playersWaitingForQuiz?: string[] }) => {
@@ -158,6 +198,8 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
       console.log('⏰ Time progression received:', data);
       setGameState(prev => {
         if (!prev) return prev;
+        // Prevent time updates if the game is already marked ended
+        if (!prev.isStarted && prev.currentYear >= TOTAL_GAME_YEARS) return prev;
         return {
           ...prev,
           currentYear: data.year,
@@ -168,10 +210,13 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
 
     const handleGameEnded = (data: { finalYear: number; finalMonth: number }) => {
       console.log(`🎮 Game ended - Year ${data.finalYear}, Month ${data.finalMonth}`);
+      // Ensure clients set the final year/month and mark game as ended so UI can navigate to end screen
       setGameState(prev => {
         if (!prev) return prev;
         return {
           ...prev,
+          currentYear: data.finalYear,
+          currentMonth: data.finalMonth,
           isStarted: false,
         };
       });

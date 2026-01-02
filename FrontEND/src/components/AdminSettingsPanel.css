@@ -155,6 +155,72 @@
   cursor: pointer;
 }
 
+.financial-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.input-with-prefix {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.input-with-prefix:focus-within {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.currency-prefix {
+  padding: 0.75rem 1rem;
+  background: #e2e8f0;
+  color: #4a5568;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border-right: 2px solid #cbd5e0;
+}
+
+.input-group input[type="number"] {
+  flex: 1;
+  border: none;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background: transparent;
+  outline: none;
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.input-group input[type="number"]::-webkit-inner-spin-button,
+.input-group input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+  height: 30px;
+}
+
+.input-group small {
+  color: #718096;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
 .info-section {
   background: #edf2f7;
   padding: 1.5rem;

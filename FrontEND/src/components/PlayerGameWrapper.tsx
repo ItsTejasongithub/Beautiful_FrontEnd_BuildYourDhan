@@ -10,6 +10,7 @@ export const PlayerGameWrapper: React.FC = () => {
   const {
     roomInfo,
     gameState: multiplayerGameState,
+    leaderboard,
     updatePlayerState,
     notifyQuizStarted,
     notifyQuizCompleted
@@ -34,21 +35,30 @@ export const PlayerGameWrapper: React.FC = () => {
 
   // Initialize game state with multiplayer admin settings when game starts
   useEffect(() => {
-    if (roomInfo?.adminSettings && multiplayerGameState?.isStarted && gameState.mode === 'menu') {
-      console.log('🎮 Starting multiplayer game with settings:', roomInfo.adminSettings);
-      // Use server-provided initial data if available so all players have the same cards/quotes
-      startMultiplayerGame(roomInfo.adminSettings, multiplayerGameState as any);
+    // Start local multiplayer session when server indicates game has started.
+    // Use admin settings from roomInfo if available, otherwise fall back to server-provided adminSettings (if any).
+    if (multiplayerGameState?.isStarted && gameState.mode === 'menu') {
+      const adminToUse = roomInfo?.adminSettings ?? (multiplayerGameState as any).adminSettings ?? undefined;
+      console.log('🎮 Starting multiplayer game with settings:', adminToUse);
+
+      // Use server-provided initial data (selectedAssets, unlock schedule, quotes) when available
+      const initialData = {
+        selectedAssets: multiplayerGameState.selectedAssets,
+        assetUnlockSchedule: multiplayerGameState.assetUnlockSchedule,
+        yearlyQuotes: multiplayerGameState.yearlyQuotes,
+        quizQuestionIndices: multiplayerGameState.quizQuestionIndices,
+      };
+
+      startMultiplayerGame(adminToUse as any, initialData);
     }
-  }, [roomInfo?.adminSettings, multiplayerGameState?.isStarted, gameState.mode, startMultiplayerGame]);
+  }, [roomInfo?.adminSettings, multiplayerGameState?.isStarted, multiplayerGameState?.selectedAssets, multiplayerGameState?.assetUnlockSchedule, multiplayerGameState?.yearlyQuotes, multiplayerGameState?.quizQuestionIndices, gameState.mode, startMultiplayerGame]);
 
   // Sync local game time with multiplayer time from server
   useEffect(() => {
     if (!multiplayerGameState || gameState.mode !== 'solo') {
-      console.log('⏭️ Skipping time sync - multiplayerGameState:', !!multiplayerGameState, 'mode:', gameState.mode);
       return;
     }
 
-    console.log(`📅 Syncing time from server: Year ${multiplayerGameState.currentYear}, Month ${multiplayerGameState.currentMonth}`);
     // Update local game time to match server time
     updateTime(multiplayerGameState.currentYear, multiplayerGameState.currentMonth);
   }, [multiplayerGameState?.currentYear, multiplayerGameState?.currentMonth, gameState.mode, updateTime]);
@@ -65,13 +75,16 @@ export const PlayerGameWrapper: React.FC = () => {
     // IMPORTANT: If this client is the host, they shouldn't update player state
     // because hosts are spectators and shouldn't appear on the leaderboard
     if (roomInfo?.isHost) {
-      console.log('⏭️ Skipping player state update - this client is the host/spectator');
       return;
     }
 
-    console.log(`📊 Updating player state: networth=${networth}`);
+    // Don't send updates if game has ended
+    if (multiplayerGameState && !multiplayerGameState.isStarted) {
+      return;
+    }
+
     updatePlayerState(networth, portfolioBreakdown);
-  }, [roomInfo?.isHost, updatePlayerState]);
+  }, [roomInfo?.isHost, multiplayerGameState, updatePlayerState]);
 
   // Override quiz completion to notify server
   const handleMarkQuizCompleted = (category: string) => {
@@ -96,6 +109,34 @@ export const PlayerGameWrapper: React.FC = () => {
     multiplayerGameState.pauseReason === 'quiz' &&
     waitingPlayers.length > 0 &&
     currentPlayer;
+
+  // Transform leaderboard data to match GameEndScreen's expected format
+  const transformedLeaderboard = leaderboard.map(player => ({
+    playerId: player.id,
+    playerName: player.name,
+    networth: player.networth,
+    portfolioBreakdown: player.portfolioBreakdown
+  }));
+
+  // Debug logging
+  React.useEffect(() => {
+    if (gameState.currentYear === 20 && !gameState.isStarted) {
+      console.log('🏆 Local game ended! Leaderboard data:', {
+        rawLeaderboard: leaderboard,
+        transformedLeaderboard: transformedLeaderboard
+      });
+    }
+  }, [gameState.currentYear, gameState.isStarted, leaderboard, transformedLeaderboard]);
+
+  // Also log when multiplayer state signals final year (debug)
+  React.useEffect(() => {
+    if (multiplayerGameState?.currentYear === 20 && multiplayerGameState?.isStarted === false) {
+      console.log('🏁 Multiplayer gameEnded event received (server):', {
+        multiplayerYear: multiplayerGameState.currentYear,
+        multiplayerMonth: multiplayerGameState.currentMonth
+      });
+    }
+  }, [multiplayerGameState?.currentYear, multiplayerGameState?.currentMonth, multiplayerGameState?.isStarted]);
 
   return (
     <div className="player-game-wrapper">
@@ -123,6 +164,7 @@ export const PlayerGameWrapper: React.FC = () => {
         onNetworthCalculated={handleNetworthCalculated}
         showLeaderboard={true}
         showPauseButton={false}
+        leaderboardData={transformedLeaderboard}
       />
     </div>
   );

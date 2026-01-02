@@ -1,4 +1,4 @@
-import { AssetCategory, AssetUnlockSchedule } from '../types';
+import { AssetCategory, AssetUnlockSchedule, UnlockEntry } from '../types';
 
 // Asset timeline data from CSV (with month precision) - Generated from Asset_Timeline.csv
 export const ASSET_TIMELINE_DATA: { [key: string]: { category: AssetCategory; firstYear: number; firstMonth: number; lastYear: number } } = {
@@ -238,21 +238,81 @@ export const generateAssetUnlockSchedule = (
     currentGameYear++;
   }
 
-  // Year 4: Stocks (min 2, max 5 random selection if STOCKS is selected)
+  // Year 4: Stocks (FIXED 2 stocks initially, then 0-3 unlock progressively)
+  // This creates better "look and feel" with gradual unlocks
+  let additionalStocksToUnlock: string[] = [];
+
   if (categories.includes('STOCKS')) {
     const calendarYear = gameStartYear + currentGameYear - 1;
+    const calendarMonth = 1; // Assume month 1 for unlock year
 
-    // Randomly select 2-5 stocks from ALL available stocks
-    // They will unlock progressively as their data becomes available
-    const stockCount = Math.min(5, Math.max(2, Math.floor(Math.random() * 4) + 2));
-    const selectedStocks = getRandomItems(assetsByCategory['STOCKS'] || [], stockCount);
+    // Filter stocks that have data available at this calendar year/month
+    const availableStocks = (assetsByCategory['STOCKS'] || []).filter(stockName => {
+      const stockData = ASSET_TIMELINE_DATA[stockName];
+      if (!stockData) return false;
 
-    schedule[currentGameYear] = [{
-      category: 'STOCKS',
-      assetType: 'STOCKS',
-      assetNames: selectedStocks,
-      calendarYear
-    }];
+      // Stock data must be available: year > firstYear OR (year == firstYear AND month >= firstMonth)
+      return calendarYear > stockData.firstYear ||
+             (calendarYear === stockData.firstYear && calendarMonth >= stockData.firstMonth);
+    });
+
+    // ALWAYS unlock exactly 2 fixed stocks initially
+    const initialStockCount = 2;
+    const initialStocks = availableStocks.slice(0, initialStockCount);
+
+    if (initialStocks.length >= 2) {
+      // Select 0-3 additional stocks randomly
+      const additionalCount = Math.floor(Math.random() * 4); // 0, 1, 2, or 3
+
+      let stocksToUnlockNow = [...initialStocks];
+      let stocksToUnlockLater: string[] = [];
+
+      if (additionalCount > 0) {
+        // Get remaining stocks (not already in initial 2)
+        const remainingStocks = (assetsByCategory['STOCKS'] || []).filter(
+          stock => !initialStocks.includes(stock)
+        );
+
+        // Randomly select additional stocks
+        const selectedAdditionalStocks = getRandomItems(remainingStocks, Math.min(additionalCount, remainingStocks.length));
+
+        // Split into "available now" vs "available later"
+        selectedAdditionalStocks.forEach(stockName => {
+          const stockData = ASSET_TIMELINE_DATA[stockName];
+          if (!stockData) return;
+
+          // Check if stock data is available NOW (at Year 4)
+          const isAvailableNow = calendarYear > stockData.firstYear ||
+                                (calendarYear === stockData.firstYear && calendarMonth >= stockData.firstMonth);
+
+          if (isAvailableNow) {
+            // Unlock immediately with fixed 2 stocks
+            stocksToUnlockNow.push(stockName);
+          } else {
+            // Save for progressive unlock later
+            stocksToUnlockLater.push(stockName);
+            additionalStocksToUnlock.push(stockName);
+          }
+        });
+      }
+
+      // Unlock stocks that are available NOW (2 fixed + any additional with data)
+      schedule[currentGameYear] = [{
+        category: 'STOCKS',
+        assetType: 'STOCKS',
+        assetNames: stocksToUnlockNow,
+        calendarYear
+      }];
+    } else {
+      // Fallback: if less than 2 stocks available, select any 2
+      schedule[currentGameYear] = [{
+        category: 'STOCKS',
+        assetType: 'STOCKS',
+        assetNames: getRandomItems(assetsByCategory['STOCKS'] || [], 2),
+        calendarYear
+      }];
+    }
+
     currentGameYear++;
   }
 
@@ -270,12 +330,25 @@ export const generateAssetUnlockSchedule = (
   }
 
   // Now progressively unlock remaining assets (one per year)
-  const remainingUnlocks: { category: AssetCategory; assetType: string; minYear: number }[] = [];
+  const remainingUnlocks: { category: AssetCategory; assetType: string; minYear: number; minMonth: number }[] = [];
 
-  // Crypto assets (BTC data available from 2014, ETH from 2017)
+  // Add stocks that will unlock later (when their data becomes available)
+  additionalStocksToUnlock.forEach(stockName => {
+    const stockData = ASSET_TIMELINE_DATA[stockName];
+    if (stockData) {
+      remainingUnlocks.push({
+        category: 'STOCKS',
+        assetType: stockName,
+        minYear: stockData.firstYear,
+        minMonth: stockData.firstMonth
+      });
+    }
+  });
+
+  // Crypto assets (BTC data available from 2014 Sep, ETH from 2017 Nov)
   if (categories.includes('CRYPTO')) {
-    remainingUnlocks.push({ category: 'CRYPTO', assetType: 'BTC', minYear: 2014 });
-    remainingUnlocks.push({ category: 'CRYPTO', assetType: 'ETH', minYear: 2017 });
+    remainingUnlocks.push({ category: 'CRYPTO', assetType: 'BTC', minYear: 2014, minMonth: 9 });
+    remainingUnlocks.push({ category: 'CRYPTO', assetType: 'ETH', minYear: 2017, minMonth: 11 });
   }
 
   // Funds (randomly select one fund - index or mutual)
@@ -284,28 +357,32 @@ export const generateAssetUnlockSchedule = (
     if (availableFunds.length > 0) {
       // Randomly pick one fund (could be index or mutual)
       const randomFund = availableFunds[Math.floor(Math.random() * availableFunds.length)];
+      const fundData = ASSET_TIMELINE_DATA[randomFund];
       remainingUnlocks.push({
         category: 'FUNDS',
         assetType: randomFund,
-        minYear: ASSET_TIMELINE_DATA[randomFund]?.firstYear || 2009
+        minYear: fundData?.firstYear || 2009,
+        minMonth: fundData?.firstMonth || 1
       });
     }
   }
 
   // REITs
   if (categories.includes('REIT')) {
-    remainingUnlocks.push({ category: 'REIT', assetType: 'EMBASSY', minYear: 2019 });
-    remainingUnlocks.push({ category: 'REIT', assetType: 'MINDSPACE', minYear: 2020 });
+    remainingUnlocks.push({ category: 'REIT', assetType: 'EMBASSY', minYear: 2019, minMonth: 4 });
+    remainingUnlocks.push({ category: 'REIT', assetType: 'MINDSPACE', minYear: 2020, minMonth: 8 });
   }
 
   // Commodities
   if (categories.includes('COMMODITIES')) {
     const availableCommodities = assetsByCategory['COMMODITIES'] || [];
     if (availableCommodities.length > 0) {
+      const commodityData = ASSET_TIMELINE_DATA[availableCommodities[0]];
       remainingUnlocks.push({
         category: 'COMMODITIES',
         assetType: availableCommodities[0],
-        minYear: ASSET_TIMELINE_DATA[availableCommodities[0]]?.firstYear || 2000
+        minYear: commodityData?.firstYear || 2000,
+        minMonth: commodityData?.firstMonth || 1
       });
     }
   }
@@ -320,9 +397,14 @@ export const generateAssetUnlockSchedule = (
     // Find the first available year where data exists
     while (currentGameYear <= maxUnlockYear) {
       const calendarYear = gameStartYear + currentGameYear - 1;
+      const calendarMonth = 1; // Assume month 1 for unlock year
 
-      // Check if this asset's data is available in this calendar year
-      if (calendarYear >= unlock.minYear) {
+      // Check if this asset's data is available in this calendar year AND month
+      // Data available if: year > minYear OR (year == minYear AND month >= minMonth)
+      const isDataAvailable = calendarYear > unlock.minYear ||
+                              (calendarYear === unlock.minYear && calendarMonth >= unlock.minMonth);
+
+      if (isDataAvailable) {
         // Only unlock if this slot is not already taken
         if (!schedule[currentGameYear]) {
           schedule[currentGameYear] = [];
@@ -370,4 +452,41 @@ export const isAssetUnlocked = (
     }
   }
   return false;
+};
+
+/**
+ * Extract selected assets from the unlock schedule
+ * This ensures selectedAssets matches what's in the schedule
+ */
+export const extractSelectedAssetsFromSchedule = (schedule: AssetUnlockSchedule): {
+  stocks: string[];
+  fundName: string;
+  commodity: string;
+} => {
+  let allStocks: string[] = [];
+  let fundName = '';
+  let commodity = '';
+
+  // Scan through all unlock years to collect assets
+  Object.values(schedule).forEach((unlocks: UnlockEntry[]) => {
+    unlocks.forEach((unlock: UnlockEntry) => {
+      if (unlock.assetType === 'STOCKS' && unlock.assetNames) {
+        // Collect all stock names (initial + progressive)
+        allStocks = [...new Set([...allStocks, ...unlock.assetNames])];
+      } else if (unlock.category === 'STOCKS' && typeof unlock.assetType === 'string') {
+        // Individual stock unlock (from progressive unlocks)
+        allStocks.push(unlock.assetType);
+      } else if (unlock.category === 'FUNDS') {
+        fundName = unlock.assetType;
+      } else if (unlock.category === 'COMMODITIES') {
+        commodity = unlock.assetType;
+      }
+    });
+  });
+
+  return {
+    stocks: [...new Set(allStocks)], // Remove duplicates
+    fundName,
+    commodity
+  };
 };

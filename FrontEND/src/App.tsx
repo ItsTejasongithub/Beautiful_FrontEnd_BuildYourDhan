@@ -78,6 +78,7 @@ function AppContent() {
           onSellAsset={sellAsset}
           onTogglePause={togglePause}
           onMarkQuizCompleted={markQuizCompleted}
+          onReturnToMenu={backToMenu}
         />
       )}
     </div>

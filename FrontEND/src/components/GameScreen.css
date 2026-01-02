@@ -1,5 +1,6 @@
 .game-screen {
   display: flex;
+  flex-direction: row;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -11,6 +12,15 @@
     #FF9933 100%
   );
   position: relative;
+}
+
+/* Mobile/Tablet: Stack vertically */
+@media (max-width: 1024px) {
+  .game-screen {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
 }
 
 .game-screen::before {
@@ -40,35 +50,72 @@
 }
 
 .sidebar {
-  width: 320px;
+  width: clamp(280px, 18vw, 320px);
   min-width: 280px;
-  height: 100%;
+  height: 100vh;
   background: rgba(0, 0, 0, 0.85);
   color: white;
-  padding: 20px;
+  padding: clamp(12px, 1.5vw, 20px);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: clamp(12px, 1.5vw, 20px);
   border-right: 3px solid #FF9933;
-  position: relative;
   z-index: 10;
   flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Tablet: Reduce sidebar width */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 100%;
+    max-width: none;
+    min-width: auto;
+    height: auto;
+    border-right: none;
+    border-bottom: 3px solid #FF9933;
+    padding: 15px;
+    gap: 15px;
+  }
+}
+
+/* Mobile: Further optimize */
+@media (max-width: 768px) {
+  .sidebar {
+    padding: 12px;
+    gap: 12px;
+  }
 }
 
 .logo-banner {
   position: relative;
-  width: 280px;
-  height: 20vh;
+  width: 100%;
+  max-width: 100%;
+  height: clamp(140px, 16vh, 160px);
   background-image: url('/BullRun_Icon.png');
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 15px;
+  border-radius: clamp(8px, 1vw, 15px);
   margin-bottom: 1px;
   overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .logo-banner {
+    height: clamp(90px, 15vh, 140px);
+  }
+}
+
+@media (max-width: 768px) {
+  .logo-banner {
+    height: clamp(70px, 12vh, 110px);
+    border-radius: 8px;
+  }
 }
 
 .logo-banner::before {
@@ -85,7 +132,7 @@
 .game-logo {
   position: relative;
   z-index: 2;
-  font-size: 40px;
+  font-size: clamp(20px, 2vw, 20px);
   font-weight: 900;
   line-height: 1.2;
   margin: 0;
@@ -93,8 +140,15 @@
     3px 3px 6px rgba(0, 0, 0, 0.8),
     0 0 50px rgb(0, 255, 68),
     0 0 50px rgb(177, 0, 21);
-  letter-spacing: 2px;
+  letter-spacing: clamp(1.5px, 0.15vw, 2px);
   text-align: center;
+}
+
+@media (max-width: 768px) {
+  .game-logo {
+    font-size: 20px;
+    letter-spacing: 1.5px;
+  }
 }
 
 .game-info {
@@ -104,7 +158,7 @@
 }
 
 .quote {
-  font-size: 15px;
+  font-size: clamp(12px, 1.2vw, 15px);
   line-height: 1.5;
   font-style: italic;
   opacity: 0.9;
@@ -113,27 +167,27 @@
 
 .pocket-cash {
   background: linear-gradient(135deg, #FF9933, #FF6600);
-  padding: 15px;
-  border-radius: 8px;
+  padding: clamp(10px, 1.2vw, 15px);
+  border-radius: clamp(6px, 0.6vw, 8px);
   text-align: center;
 }
 
 .pocket-label {
-  font-size: px;
+  font-size: clamp(11px, 1vw, 14px);
   opacity: 0.9;
   margin-bottom: 5px;
   font-weight: bold;
 }
 
 .pocket-amount {
-  font-size: 20px;
+  font-size: clamp(16px, 1.6vw, 20px);
   font-weight: 700;
 }
 
 .net-worth {
   background: linear-gradient(135deg, #1865ff, #ffc001);
-  padding: 10px;
-  border-radius: 8px;
+  padding: clamp(8px, 1vw, 10px);
+  border-radius: clamp(6px, 0.6vw, 8px);
   text-align: center;
   position: relative;
   cursor: pointer;
@@ -152,15 +206,15 @@
 }
 
 .net-worth-label {
-  font-size: 15px;
-  opacity: 9;
+  font-size: clamp(12px, 1.2vw, 15px);
+  opacity: 0.9;
   margin-bottom: 1px;
   font-weight: bold;
   color: #ffcc00;
 }
 
 .net-worth-amount {
-  font-size: 20px;
+  font-size: clamp(16px, 1.6vw, 20px);
   font-weight: 700;
   margin-bottom: 5px;
   color: #FFFFFF;
@@ -168,9 +222,9 @@
 }
 
 .net-worth-pl {
-  font-size: 14px;
+  font-size: clamp(11px, 1.1vw, 14px);
   font-weight: 500;
-  
+
 }
 
 .net-worth-breakdown {
@@ -249,20 +303,10 @@
 
 .game-timer {
   background: rgba(19, 136, 8, 0.3);
-  padding: 12px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 15px;
   text-align: center;
-  border: 2px solid #138808;
-  margin-top: auto;
-}
-
-.game-timer div {
-  margin-bottom: 5px;
-}
-
-.game-timer div:last-child {
-  margin-bottom: 0;
+  padding: 0px;
 }
 
 .pause-button {
@@ -290,12 +334,27 @@
 
 .main-content {
   flex: 1;
-  padding: 10px;
+  height: 100vh;
+  padding: clamp(8px, 1vw, 10px);
+  padding-bottom: 40px;
   overflow-y: auto;
   overflow-x: hidden;
-  width: 100%;
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    width: 100%;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 8px;
+  }
 }
 
 /* Year-specific layouts - Responsive Grid-Based Approach */
@@ -309,17 +368,39 @@
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: clamp(6px, 0.5vw, 10px);
   align-items: flex-start;
   align-content: flex-start;
-  justify-content: flex-start;
+  justify-content: center;
   width: 100%;
-  height: 100%;
-  padding: 8px;
+  min-height: 100%;
+  padding: clamp(4px, 0.5vw, 8px);
+  padding-top: 20px;
+  padding-bottom: 40px;
+  box-sizing: border-box;
+}
+
+/* Tablet: Adjust layout */
+@media (max-width: 1024px) {
+  .dynamic-assets-layout {
+    gap: 8px;
+    padding: 8px;
+  }
+}
+
+/* Mobile: Single column layout */
+@media (max-width: 768px) {
+  .dynamic-assets-layout {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+  }
 }
 
 /* When only 1 section exists (Banking only) - Center it vertically and horizontally */
 .dynamic-assets-layout:has(> section:only-child) {
+  min-height: calc(100vh - 80px);
   justify-content: center;
   align-items: center;
   align-content: center;
@@ -327,6 +408,7 @@
 
 /* When 2-3 sections exist - Center them vertically and horizontally */
 .dynamic-assets-layout:has(> section:nth-child(1)):has(> section:nth-child(2)):not(:has(> section:nth-child(4))) {
+  min-height: calc(100vh - 80px);
   justify-content: center;
   align-items: center;
   align-content: center;
@@ -355,6 +437,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   box-sizing: border-box;
   flex: 0 1 auto;
+  max-width: 100%; /* Prevent overflow */
 }
 
 /* Specific section widths for proper row layout - ALL DYNAMIC */
@@ -367,35 +450,65 @@
 .reit-section {
   width: fit-content;
   flex: 0 0 auto;
+  min-width: min-content; /* Allow shrinking on small screens */
 }
 
 .section-cards {
   display: flex;
-  gap: 12px;
+  gap: 6px;
   justify-content: flex-start;
   flex-wrap: wrap;
   width: 100%;
 }
 
-/* Laptop/smaller screens - Make sections stack vertically */
+/* Laptop/smaller screens - Better responsive behavior */
 @media (max-width: 1366px) {
-  .banking-section {
-    min-width: 100%;
+  .dynamic-assets-layout {
+    gap: 2px;
+    padding: 2px;
   }
 
-  .gold-section {
-    min-width: 100%;
+  .banking-section,
+  .gold-section,
+  .index-section,
+  .stocks-section,
+  .crypto-section,
+  .commodity-section,
+  .reit-section {
+    padding: 8px;
   }
 
-  .index-section {
-    min-width: 100%;
+  .section-cards {
+    gap: 6px;
+  }
+}
+
+/* Very Small Screens - Stack sections vertically */
+@media (max-width: 1270px) {
+  .dynamic-assets-layout {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .banking-section,
+  .gold-section,
+  .index-section,
+  .stocks-section {
+    width: 100%;
+    max-width: 100%;
   }
 
   .crypto-section,
   .commodity-section,
   .reit-section {
-    min-width: 100%;
+    width: 100%;
+    max-width: 100%;
     flex: 1 1 100%;
+  }
+
+  .section-cards {
+    gap: 6px;
+    justify-content: center;
   }
 }
 
@@ -452,14 +565,9 @@
     width: 280px;
     min-width: 280px;
   }
-
-  .logo-banner {
-    width: 250px;
-    height: 100px;
-  }
 }
 
-/* Laptop Screen - 1268×911 */
+/* Laptop Screen - 1599px and below */
 @media (max-width: 1599px) {
   .sidebar {
     width: 240px;
@@ -468,54 +576,12 @@
     gap: 15px;
   }
 
-  .logo-banner {
-    width: 210px;
-    height: 85px;
-  }
-
-  .game-logo {
-    font-size: 36px;
-  }
-
-  .quote {
-    font-size: 12px;
-    padding: 8px;
-  }
-
-  .pocket-cash,
-  .net-worth {
+  .main-content {
     padding: 10px;
   }
 
-  .pocket-label,
-  .net-worth-label {
-    font-size: 12px;
-  }
-
-  .pocket-amount,
-  .net-worth-amount {
-    font-size: 20px;
-  }
-
-  .net-worth-pl {
-    font-size: 11px;
-  }
-
-  .year-info {
-    font-size: 13px;
-  }
-
-  .pause-button {
-    font-size: 13px;
-    padding: 10px 16px;
-  }
-
-  .main-content {
-    padding: 12px;
-  }
-
   .section-cards {
-    gap: 12px;
+    gap: 6px;
   }
 
   .section-title {
@@ -523,5 +589,268 @@
   }
 }
 
+/* Small Laptop - 1366px and below */
+@media (max-width: 1366px) {
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .main-content {
+    padding: 8px;
+  }
+
+  .section-title {
+    font-size: 12px;
+  }
+}
+
+/* Very Small Screens - 1280px and below */
+@media (max-width: 1270px) {
+  .sidebar {
+    width: 200px;
+    min-width: 200px;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .main-content {
+    padding: 6px;
+  }
+
+  .section-title {
+    font-size: 11px;
+    padding: 5px 0;
+  }
+}
+
+/* ============================================ */
+/* HEIGHT-BASED MEDIA QUERIES (for short screens) */
+/* ============================================ */
+
+/* Short screens - 700px height and below */
+@media (max-height: 700px) {
+  .sidebar {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .main-content {
+    padding: 5px;
+  }
+
+  .dynamic-assets-layout {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .section-title {
+    font-size: 10px;
+    margin: 0 0 8px 0;
+    padding: 4px 0;
+  }
+
+  .banking-section,
+  .gold-section,
+  .index-section,
+  .stocks-section,
+  .crypto-section,
+  .commodity-section,
+  .reit-section {
+    padding: 6px;
+  }
+
+  .section-cards {
+    gap: 6px;
+  }
+}
+
+/* Very Short Screens - 600px height and below (like 1280x551) */
+@media (max-height: 600px) {
+  .sidebar {
+    padding: 6px;
+    gap: 6px;
+    width: 180px;
+    min-width: 180px;
+  }
+
+  .main-content {
+    padding: 4px;
+  }
+
+  .dynamic-assets-layout {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .section-title {
+    font-size: 9px;
+    margin: 0 0 6px 0;
+    padding: 3px 0;
+  }
+
+  .banking-section,
+  .gold-section,
+  .index-section,
+  .stocks-section,
+  .crypto-section,
+  .commodity-section,
+  .reit-section {
+    padding: 5px;
+  }
+
+  .section-cards {
+    gap: 6px;
+  }
+}
+
+/* Extremely Short Screens - 550px height and below */
+@media (max-height: 550px) {
+  .sidebar {
+    padding: 5px;
+    gap: 5px;
+    width: 160px;
+    min-width: 160px;
+  }
+
+  .main-content {
+    padding: 3px;
+  }
+
+  .dynamic-assets-layout {
+    gap: 2px;
+    padding: 2px;
+  }
+}
+
+/* ============================================ */
+/* CUSTOM MEDIA QUERY - ONLY FOR 1536×695 SCREEN */
+/* ============================================ */
+@media (min-width: 1500px) and (max-width: 1600px) and (min-height: 650px) and (max-height: 750px) {
+  /* Sidebar customization */
+  .sidebar {
+    width: 250px;
+    min-width: 220px;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .main-content {
+    padding: 6px;
+  }
+
+  .dynamic-assets-layout {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .section-title {
+    font-size: 11px;
+    margin: 0 0 8px 0;
+    padding: 4px 0;
+  }
+
+  .banking-section,
+  .gold-section,
+  .index-section,
+  .stocks-section,
+  .crypto-section,
+  .commodity-section,
+  .reit-section {
+    padding: 7px;
+  }
+
+  .section-cards {
+    gap: 6px;
+  }
+}
+
 /* External Display - 1920×1080 (Default styles apply) */
 /* No media query needed - base styles are optimized for 1920×1080 */
+
+@media (max-width: 1290px) and (max-height: 700px) {
+
+  /* Sidebar customization */
+  .sidebar {
+    width: 250px;
+    min-width: 220px;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .main-content {
+    padding: 6px;
+  }
+
+  .dynamic-assets-layout {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .section-title {
+    font-size: 11px;
+    margin: 0 0 8px 0;
+    padding: 4px 0;
+  }
+
+  .banking-section,
+  .gold-section,
+  .index-section,
+  .stocks-section,
+  .crypto-section,
+  .commodity-section,
+  .reit-section {
+    padding: 7px;
+  }
+
+  .section-cards {
+    gap: 6px;
+  }
+}
+
+/* ============================================ */
+/* CUSTOM SCROLLBAR STYLING */
+/* ============================================ */
+
+/* Main content scrollbar */
+.main-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #FF9933, #FF6600);
+  border-radius: 10px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #FF6600, #FF9933);
+}
+
+/* Sidebar scrollbar */
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 153, 51, 0.5);
+  border-radius: 10px;
+  border: 2px solid transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 153, 51, 0.7);
+}
+

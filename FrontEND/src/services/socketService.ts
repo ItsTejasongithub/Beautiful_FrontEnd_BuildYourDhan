@@ -3,7 +3,11 @@ import { PlayerInfo, MultiplayerGameState, PortfolioBreakdown } from '../types/m
 import { AdminSettings } from '../types';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
-console.log('🔧 Socket Service - Server URL:', SERVER_URL);
+console.log('\n🔧 ===== SOCKET SERVICE INITIALIZATION =====');
+console.log('🔧 Server URL:', SERVER_URL);
+console.log('🔧 Environment Mode:', import.meta.env.MODE);
+console.log('🔧 VITE_SERVER_URL:', import.meta.env.VITE_SERVER_URL || 'NOT SET (using default)');
+console.log('🔧 ==========================================\n');
 
 interface ServerToClientEvents {
   roomCreated: (data: { roomId: string; hostId: string }) => void;
@@ -27,7 +31,7 @@ interface ClientToServerEvents {
   createRoom: (data: { playerName: string }, callback: (response: { success: boolean; roomId?: string; error?: string }) => void) => void;
   joinRoom: (data: { roomId: string; playerName: string }, callback: (response: { success: boolean; players?: PlayerInfo[]; adminSettings?: any; error?: string }) => void) => void;
   leaveRoom: () => void;
-  startGame: (data: { adminSettings: AdminSettings }, callback: (response: { success: boolean; error?: string }) => void) => void;
+  startGame: (data: { adminSettings: AdminSettings; initialGameState?: any }, callback: (response: { success: boolean; error?: string }) => void) => void;
   togglePause: () => void;
   updatePlayerState: (data: { networth: number; portfolioBreakdown: PortfolioBreakdown }) => void;
   quizStarted: (data: { quizCategory: string }) => void;
@@ -83,7 +87,12 @@ class SocketService {
 
     this.socket.on('connect_error', (error) => {
       this.isConnecting = false;
-      console.error('🚫 Connection error:', error.message);
+      console.error('\n❌ ==== CONNECTION ERROR ====');
+      console.error('Error:', error.message);
+      console.error('Server URL:', SERVER_URL);
+      console.error('Transports:', this.socket?.io?.opts?.transports);
+      console.error('Make sure backend server is running!');
+      console.error('============================\n');
     });
 
     this.socket.on('error', (data) => {

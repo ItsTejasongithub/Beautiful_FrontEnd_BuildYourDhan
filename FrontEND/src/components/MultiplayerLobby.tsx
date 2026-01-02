@@ -152,8 +152,9 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBack }) =>
 
   // In a room - show lobby
   const isHost = roomInfo.isHost;
-  const playerCount = roomInfo.players.length;
-  const canStart = playerCount >= 2 && isHost && adminSettings !== null;
+  // Count non-host players (host doesn't count as a player)
+  const nonHostPlayerCount = roomInfo.players.filter(p => !p.isHost).length;
+  const canStart = nonHostPlayerCount >= 2 && isHost && adminSettings !== null;
 
   return (
     <div className="multiplayer-lobby">
@@ -179,8 +180,8 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBack }) =>
           {/* Players List */}
           <div className="players-section">
             <h2>
-              Players ({playerCount})
-              {playerCount < 2 && <span className="min-players-warning"> - Need 2 minimum</span>}
+              Players ({nonHostPlayerCount})
+              {nonHostPlayerCount < 2 && <span className="min-players-warning"> - Need 2 minimum</span>}
             </h2>
             <div className="players-list">
               {roomInfo.players.map((player) => (
@@ -233,7 +234,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBack }) =>
           {!isHost && (
             <div className="waiting-message">
               <p>Waiting for host to start the game...</p>
-              {playerCount < 2 && <p className="warning">Need at least 2 players</p>}
+              {nonHostPlayerCount < 2 && <p className="warning">Need at least 2 players</p>}
             </div>
           )}
         </div>
@@ -247,7 +248,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onBack }) =>
           >
             {!adminSettings
               ? 'CONFIGURE SETTINGS FIRST'
-              : playerCount < 2
+              : nonHostPlayerCount < 2
               ? 'WAITING FOR PLAYERS...'
               : 'START GAME'}
           </button>

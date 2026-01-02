@@ -38,6 +38,7 @@ export interface MultiplayerGameState {
   selectedAssets?: any;
   assetUnlockSchedule?: any;
   yearlyQuotes?: string[];
+  quizQuestionIndices?: { [category: string]: number };
 }
 
 export interface RoomInfo {

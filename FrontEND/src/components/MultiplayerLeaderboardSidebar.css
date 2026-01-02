@@ -3,7 +3,8 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  margin-top: 15px;
+  margin-top: 1px;
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -70,12 +71,15 @@
 }
 
 .leaderboard-list-container.expanded {
-  /* Constrain height relative to viewport so there's room for other UI elements */
-  max-height: calc(100vh - 220px);
+  /* Constrain height to ensure independent scrolling within sidebar */
+  max-height: 60vh;
   margin-top: 8px;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch; /* smooth scrolling on mobile */
   padding-right: 6px; /* avoid hiding scrollbar over content */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 153, 51, 0.5) rgba(255, 255, 255, 0.05);
 } 
 
 .leaderboard-list {
@@ -287,7 +291,26 @@
   font-weight: 500;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling for leaderboard container */
+.leaderboard-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.leaderboard-list-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.leaderboard-list-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 153, 51, 0.5);
+  border-radius: 10px;
+}
+
+.leaderboard-list-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 153, 51, 0.7);
+}
+
+/* Legacy scrollbar styling */
 .leaderboard-list::-webkit-scrollbar {
   width: 5px;
 }

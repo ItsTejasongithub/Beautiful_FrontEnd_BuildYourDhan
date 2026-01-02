@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, FixedDeposit, AssetHolding, SelectedAssets, AdminSettings } from '../types';
 import {
   MONTH_DURATION_MS,
@@ -14,6 +14,10 @@ import {
   getRandomItem
 } from '../utils/constants';
 import { generateAssetUnlockSchedule } from '../utils/assetUnlockCalculator';
+import { generateQuestionIndices } from '../utils/assetEducation';
+
+// Performance optimization: Disable debug logging in production
+const DEBUG_MODE = false; // Set to true only when debugging
 
 const initialHoldings = {
   physicalGold: { quantity: 0, avgPrice: 0, totalInvested: 0 },
@@ -25,6 +29,11 @@ const initialHoldings = {
   commodity: { quantity: 0, avgPrice: 0, totalInvested: 0 },
   reits: {}
 };
+
+// Helper that returns true when the game is definitively over. When true,
+// we must avoid applying any further financial updates (interest, recurring
+// income, buys/sells, FD changes, etc.).
+const gameHasEnded = (s: GameState) => s.isStarted === false && s.currentYear >= TOTAL_GAME_YEARS;
 
 export const useGameState = (isMultiplayer: boolean = false) => {
   const [gameState, setGameState] = useState<GameState>({
@@ -40,10 +49,14 @@ export const useGameState = (isMultiplayer: boolean = false) => {
     completedQuizzes: []
   });
 
-  // Debug: Monitor pocket cash changes
-  useEffect(() => {
-    console.log(`💵 Pocket Cash State: ₹${gameState.pocketCash.toFixed(2)}`);
-  }, [gameState.pocketCash]);
+  // Track if a transaction is in progress to prevent race conditions
+  const transactionInProgress = useRef(false);
+  const pendingTimeUpdate = useRef<{year: number; month: number} | null>(null);
+
+  // Debug: Monitor pocket cash changes (DISABLED for performance)
+  // useEffect(() => {
+  //   console.log(`💵 Pocket Cash State: ₹${gameState.pocketCash.toFixed(2)}`);
+  // }, [gameState.pocketCash]);
 
   // Start game timer (disabled in multiplayer mode - server controls time)
   useEffect(() => {
@@ -51,6 +64,12 @@ export const useGameState = (isMultiplayer: boolean = false) => {
 
     const interval = setInterval(() => {
       setGameState(prev => {
+        // CRITICAL FIX: Stop timer if game has ended (year 20, month 12)
+        if (prev.currentYear >= TOTAL_GAME_YEARS && prev.currentMonth === 12) {
+          clearInterval(interval);
+          return prev;
+        }
+
         // Check if game has ended before processing
         if (prev.currentYear > TOTAL_GAME_YEARS) {
           return prev;
@@ -87,10 +106,17 @@ export const useGameState = (isMultiplayer: boolean = false) => {
           return fd;
         });
 
+        // Add recurring income every 6 months (months 6 and 12)
+        let newPocketCash = prev.pocketCash;
+        if ((newMonth === 6 || newMonth === 12) && prev.adminSettings?.recurringIncome) {
+          newPocketCash += prev.adminSettings.recurringIncome;
+        }
+
         return {
           ...prev,
           currentMonth: newMonth,
           currentYear: newYear,
+          pocketCash: newPocketCash,
           savingsAccount: { ...prev.savingsAccount, balance: newSavingsBalance },
           fixedDeposits: updatedFDs
         };
@@ -107,16 +133,18 @@ export const useGameState = (isMultiplayer: boolean = false) => {
     }));
   }, []);
 
-  const startMultiplayerGame = useCallback((adminSettings: AdminSettings, initialData?: { selectedAssets?: any; assetUnlockSchedule?: any; yearlyQuotes?: string[] }) => {
+  const startMultiplayerGame = useCallback((adminSettings: AdminSettings, initialData?: { selectedAssets?: any; assetUnlockSchedule?: any; yearlyQuotes?: string[]; quizQuestionIndices?: { [category: string]: number } }) => {
     // For multiplayer, either use provided initial data (from server/host) or generate locally
     let selectedAssets: SelectedAssets;
     let assetUnlockSchedule: any;
     let shuffledQuotes: string[];
+    let quizQuestionIndices: { [category: string]: number };
 
     if (initialData && initialData.selectedAssets) {
       selectedAssets = initialData.selectedAssets;
       assetUnlockSchedule = initialData.assetUnlockSchedule;
       shuffledQuotes = initialData.yearlyQuotes || [...FINANCIAL_QUOTES].sort(() => Math.random() - 0.5);
+      quizQuestionIndices = initialData.quizQuestionIndices || generateQuestionIndices();
     } else {
       const selectedStocks = getRandomItems(AVAILABLE_STOCKS, 2, 5);
       const fundType: 'index' | 'mutual' = Math.random() > 0.5 ? 'index' : 'mutual';
@@ -138,13 +166,16 @@ export const useGameState = (isMultiplayer: boolean = false) => {
       );
 
       shuffledQuotes = [...FINANCIAL_QUOTES].sort(() => Math.random() - 0.5);
+
+      quizQuestionIndices = generateQuestionIndices();
     }
 
     setGameState({
       mode: 'solo',
+      isStarted: true,
       currentYear: 1,
       currentMonth: 1,
-      pocketCash: STARTING_CASH,
+      pocketCash: adminSettings.initialPocketCash || STARTING_CASH,
       savingsAccount: { balance: 0, interestRate: SAVINGS_INTEREST_RATE },
       fixedDeposits: [],
       holdings: initialHoldings,
@@ -154,7 +185,8 @@ export const useGameState = (isMultiplayer: boolean = false) => {
       adminSettings,
       assetUnlockSchedule,
       yearlyQuotes: shuffledQuotes,
-      completedQuizzes: []
+      completedQuizzes: [],
+      quizQuestionIndices
     });
   }, []);
 
@@ -211,11 +243,15 @@ export const useGameState = (isMultiplayer: boolean = false) => {
     // Shuffle quotes for this game - one unique quote per year
     const shuffledQuotes = [...FINANCIAL_QUOTES].sort(() => Math.random() - 0.5);
 
+    // Generate random question indices for quiz (one per category, consistent for this game session)
+    const quizQuestionIndices = generateQuestionIndices();
+
     setGameState({
       mode: 'solo',
+      isStarted: true,
       currentYear: 1,
       currentMonth: 1,
-      pocketCash: STARTING_CASH,
+      pocketCash: adminSettings?.initialPocketCash || STARTING_CASH,
       savingsAccount: { balance: 0, interestRate: SAVINGS_INTEREST_RATE },
       fixedDeposits: [],
       holdings: initialHoldings,
@@ -225,7 +261,8 @@ export const useGameState = (isMultiplayer: boolean = false) => {
       adminSettings,
       assetUnlockSchedule,
       yearlyQuotes: shuffledQuotes,
-      completedQuizzes: []
+      completedQuizzes: [],
+      quizQuestionIndices
     });
   }, []);
 
@@ -245,6 +282,7 @@ export const useGameState = (isMultiplayer: boolean = false) => {
 
   const depositToSavings = useCallback((amount: number) => {
     setGameState(prev => {
+      if (gameHasEnded(prev)) return prev; // no updates after game end
       if (amount > prev.pocketCash) return prev;
       return {
         ...prev,
@@ -259,6 +297,7 @@ export const useGameState = (isMultiplayer: boolean = false) => {
 
   const withdrawFromSavings = useCallback((amount: number) => {
     setGameState(prev => {
+      if (gameHasEnded(prev)) return prev;
       if (amount > prev.savingsAccount.balance) return prev;
       return {
         ...prev,
@@ -273,6 +312,7 @@ export const useGameState = (isMultiplayer: boolean = false) => {
 
   const createFixedDeposit = useCallback((amount: number, duration: 3 | 12 | 36, interestRate: number) => {
     setGameState(prev => {
+      if (gameHasEnded(prev)) return prev;
       if (amount > prev.pocketCash || prev.fixedDeposits.length >= 3) return prev;
 
       const maturityMonth = (prev.currentMonth + duration) % 12 || 12;
@@ -299,8 +339,7 @@ export const useGameState = (isMultiplayer: boolean = false) => {
   }, []);
 
   const collectFD = useCallback((fdId: string) => {
-    setGameState(prev => {
-      const fd = prev.fixedDeposits.find(f => f.id === fdId);
+    setGameState(prev => {      if (gameHasEnded(prev)) return prev;      const fd = prev.fixedDeposits.find(f => f.id === fdId);
       if (!fd || !fd.isMatured) return prev;
 
       const maturityAmount = fd.amount * (1 + fd.interestRate / 100);
@@ -315,6 +354,7 @@ export const useGameState = (isMultiplayer: boolean = false) => {
 
   const breakFD = useCallback((fdId: string) => {
     setGameState(prev => {
+      if (gameHasEnded(prev)) return prev;
       const fd = prev.fixedDeposits.find(f => f.id === fdId);
       if (!fd) return prev;
 
@@ -338,6 +378,7 @@ export const useGameState = (isMultiplayer: boolean = false) => {
     }
 
     setGameState(prev => {
+      if (gameHasEnded(prev)) return prev; // Prevent transactions after game end
       const totalCost = quantity * currentPrice;
       console.log(`🛒 Buying ${quantity} ${assetName} @ ₹${currentPrice} = ₹${totalCost}`);
       if (totalCost > prev.pocketCash) return prev;
@@ -375,6 +416,13 @@ export const useGameState = (isMultiplayer: boolean = false) => {
   }, []);
 
   const sellAsset = useCallback((assetType: string, assetName: string, quantity: number, currentPrice: number) => {
+    // CRITICAL DEBUG: Always log sell transactions to catch pricing issues
+    console.log(`\n🔍 ===== SELL TRANSACTION START =====`);
+    console.log(`📌 Asset: ${assetName} (${assetType})`);
+    console.log(`📌 Quantity to Sell: ${quantity}`);
+    console.log(`📌 Current Price per unit: ₹${currentPrice}`);
+    console.log(`📌 Expected Sale Amount: ₹${(quantity * currentPrice).toFixed(2)}`);
+
     // CRITICAL FIX: Prevent selling at price 0 (would cause bankruptcy!)
     if (currentPrice <= 0) {
       console.error(`❌ Cannot sell ${assetName}: Invalid price ${currentPrice}`);
@@ -382,7 +430,11 @@ export const useGameState = (isMultiplayer: boolean = false) => {
       return;
     }
 
+    // Mark transaction as in progress
+    transactionInProgress.current = true;
+
     setGameState(prev => {
+      if (gameHasEnded(prev)) return prev; // Prevent transactions after game end
       const newHoldings = { ...prev.holdings };
       let holding: AssetHolding | undefined;
 
@@ -394,22 +446,23 @@ export const useGameState = (isMultiplayer: boolean = false) => {
         holding = assetGroup[assetName];
       }
 
-      if (!holding || holding.quantity < quantity) return prev;
+      if (!holding || holding.quantity < quantity) {
+        if (DEBUG_MODE) {
+          console.error(`❌ TRANSACTION BLOCKED: Insufficient holdings!`);
+          console.error(`   Available: ${holding?.quantity || 0}, Requested: ${quantity}`);
+        }
+        return prev;
+      }
 
       const saleAmount = quantity * currentPrice;
-      const previousPocketCash = prev.pocketCash;
-      const newPocketCash = previousPocketCash + saleAmount;
-
-      console.log(`💰 SELLING TRANSACTION:`);
-      console.log(`   Asset: ${assetName} (${assetType})`);
-      console.log(`   Quantity: ${quantity} @ ₹${currentPrice}/unit`);
-      console.log(`   Sale Amount: ₹${saleAmount.toFixed(2)}`);
-      console.log(`   Previous Pocket Cash: ₹${previousPocketCash.toFixed(2)}`);
-      console.log(`   New Pocket Cash: ₹${newPocketCash.toFixed(2)}`);
-      console.log(`   Holdings before: ${holding.quantity} units`);
-
       const newQuantity = holding.quantity - quantity;
       const reducedInvestment = (holding.totalInvested / holding.quantity) * quantity;
+
+      console.log(`💰 Sale Calculation:`);
+      console.log(`   Holding Quantity: ${holding.quantity}`);
+      console.log(`   Sale Amount: ₹${saleAmount.toFixed(2)}`);
+      console.log(`   Reduced Investment: ₹${reducedInvestment.toFixed(2)}`);
+      console.log(`   New Quantity: ${newQuantity}`);
 
       if (assetType === 'physicalGold' || assetType === 'digitalGold' || assetType === 'indexFund' ||
           assetType === 'mutualFund' || assetType === 'commodity') {
@@ -437,13 +490,23 @@ export const useGameState = (isMultiplayer: boolean = false) => {
         holdings: newHoldings
       };
 
-      console.log(`✅ State updated - New pocket cash should be: ₹${updatedState.pocketCash.toFixed(2)}`);
+      console.log(`✅ Updated Pocket Cash: ₹${prev.pocketCash.toFixed(2)} + ₹${saleAmount.toFixed(2)} = ₹${updatedState.pocketCash.toFixed(2)}`);
+      console.log(`🔍 ===== SELL TRANSACTION END =====\n`);
 
       return updatedState;
     });
 
-    // Log the state AFTER React updates it (in next render)
-    console.log(`⏳ Waiting for React to apply state update...`);
+    // Unlock transaction after state update completes
+    setTimeout(() => {
+      transactionInProgress.current = false;
+
+      // Apply any pending time update
+      if (pendingTimeUpdate.current) {
+        const { year, month } = pendingTimeUpdate.current;
+        pendingTimeUpdate.current = null;
+        updateTime(year, month);
+      }
+    }, 50);
   }, []);
 
   const togglePause = useCallback(() => {
@@ -462,9 +525,59 @@ export const useGameState = (isMultiplayer: boolean = false) => {
 
   // Update time from external source (for multiplayer)
   const updateTime = useCallback((year: number, month: number) => {
-    console.log(`🔄 Updating local time to Year ${year}, Month ${month}`);
+    // If a transaction is in progress, defer the time update
+    if (transactionInProgress.current) {
+      pendingTimeUpdate.current = { year, month };
+      return;
+    }
+
     setGameState(prev => {
-      console.log(`  Previous state: Year ${prev.currentYear}, Month ${prev.currentMonth}, Mode: ${prev.mode}`);
+      // Do not apply any time updates once the game has ended
+      if (gameHasEnded(prev)) return prev;
+
+      // If server sent a year beyond the allowed game years, clamp to final and mark game ended
+      if (year > TOTAL_GAME_YEARS) {
+        return {
+          ...prev,
+          currentYear: TOTAL_GAME_YEARS,
+          currentMonth: 12,
+          isStarted: false
+        };
+      }
+
+      // If server sent the final year and final month, mark game ended
+      if (year === TOTAL_GAME_YEARS && month >= 12) {
+        // Apply any month change interest & FD maturity semantics first (so final state's pocket/savings are updated)
+        let newSavingsBalance = prev.savingsAccount.balance;
+        if (month !== prev.currentMonth) {
+          const monthlyInterest = prev.savingsAccount.balance * (SAVINGS_INTEREST_RATE / 12);
+          newSavingsBalance = prev.savingsAccount.balance + monthlyInterest;
+        }
+
+        const updatedFDs = prev.fixedDeposits.map(fd => {
+          if (!fd.isMatured && fd.maturityYear === year && fd.maturityMonth === month) {
+            return { ...fd, isMatured: true };
+          }
+          return fd;
+        });
+
+        let newPocketCash = prev.pocketCash;
+        if ((month === 6 || month === 12) && month !== prev.currentMonth && prev.adminSettings?.recurringIncome) {
+          newPocketCash += prev.adminSettings.recurringIncome;
+        }
+
+        console.log('🎯 updateTime: final year/month received, marking game as ended locally');
+
+        return {
+          ...prev,
+          currentYear: TOTAL_GAME_YEARS,
+          currentMonth: 12,
+          pocketCash: newPocketCash,
+          savingsAccount: { ...prev.savingsAccount, balance: newSavingsBalance },
+          fixedDeposits: updatedFDs,
+          isStarted: false,
+        };
+      }
 
       // Apply monthly savings account interest if month changed
       let newSavingsBalance = prev.savingsAccount.balance;
@@ -481,10 +594,17 @@ export const useGameState = (isMultiplayer: boolean = false) => {
         return fd;
       });
 
+      // Add recurring income every 6 months (months 6 and 12)
+      let newPocketCash = prev.pocketCash;
+      if ((month === 6 || month === 12) && month !== prev.currentMonth && prev.adminSettings?.recurringIncome) {
+        newPocketCash += prev.adminSettings.recurringIncome;
+      }
+
       return {
         ...prev,
         currentYear: year,
         currentMonth: month,
+        pocketCash: newPocketCash,
         savingsAccount: { ...prev.savingsAccount, balance: newSavingsBalance },
         fixedDeposits: updatedFDs
       };

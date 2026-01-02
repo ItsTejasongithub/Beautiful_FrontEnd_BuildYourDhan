@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { AssetEducationContent } from '../utils/assetEducation';
+import { AssetEducationContent, QuizQuestion } from '../utils/assetEducation';
 import './AssetEducationModal.css';
 
 interface AssetEducationModalProps {
   isOpen: boolean;
   content: AssetEducationContent | null;
+  questionIndex?: number; // Optional: specific question to show
   onComplete: () => void;
 }
 
 export const AssetEducationModal: React.FC<AssetEducationModalProps> = ({
   isOpen,
   content,
+  questionIndex,
   onComplete
 }) => {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -18,6 +20,7 @@ export const AssetEducationModal: React.FC<AssetEducationModalProps> = ({
   const [isShaking, setIsShaking] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number | null>(null);
 
   // Reset state when modal opens with new content
   useEffect(() => {
@@ -27,10 +30,21 @@ export const AssetEducationModal: React.FC<AssetEducationModalProps> = ({
       setIsShaking(false);
       setShowHint(false);
       setIsCorrect(false);
-    }
-  }, [isOpen, content]);
 
-  if (!isOpen || !content) return null;
+      // Select question index only once when modal opens
+      if (questionIndex !== undefined) {
+        setSelectedQuestionIndex(questionIndex);
+      } else {
+        // Generate random index only once
+        setSelectedQuestionIndex(Math.floor(Math.random() * content.questions.length));
+      }
+    }
+  }, [isOpen, content, questionIndex]);
+
+  if (!isOpen || !content || selectedQuestionIndex === null) return null;
+
+  // Get the current question using the memoized index
+  const currentQuestion: QuizQuestion = content.questions[selectedQuestionIndex];
 
   const handleOptionClick = (index: number) => {
     setSelectedOption(index);
@@ -39,7 +53,7 @@ export const AssetEducationModal: React.FC<AssetEducationModalProps> = ({
   const handleSubmit = () => {
     if (selectedOption === null) return;
 
-    if (selectedOption === content.correctAnswer) {
+    if (selectedOption === currentQuestion.correctAnswer) {
       // Correct answer!
       setIsCorrect(true);
       setTimeout(() => {
@@ -78,10 +92,10 @@ export const AssetEducationModal: React.FC<AssetEducationModalProps> = ({
         </div>
 
         <div className="quiz-section">
-          <h3 className="quiz-question">{content.question}</h3>
+          <h3 className="quiz-question">{currentQuestion.question}</h3>
 
           <div className="quiz-options">
-            {content.options.map((option, index) => (
+            {currentQuestion.options.map((option, index) => (
               <button
                 key={index}
                 className={`quiz-option ${selectedOption === index ? 'selected' : ''}`}
@@ -96,7 +110,7 @@ export const AssetEducationModal: React.FC<AssetEducationModalProps> = ({
           {showHint && (
             <div className="hint-box">
               <span className="hint-icon">💡</span>
-              <span className="hint-text">{content.hint}</span>
+              <span className="hint-text">{currentQuestion.hint}</span>
             </div>
           )}
 

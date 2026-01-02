@@ -7,7 +7,7 @@ import { AssetEducationModal } from './AssetEducationModal';
 import { MultiplayerLeaderboardSidebar } from './MultiplayerLeaderboardSidebar';
 import GameEndScreen from './GameEndScreen';
 import { loadCSV, parseAssetCSV, parseFDRates, getAssetPriceAtDate, getFDRateForYear } from '../utils/csvLoader';
-import { ASSET_UNLOCK_TIMELINE, STARTING_CASH } from '../utils/constants';
+import { ASSET_UNLOCK_TIMELINE, STARTING_CASH, TOTAL_GAME_YEARS } from '../utils/constants';
 import { ASSET_TIMELINE_DATA } from '../utils/assetUnlockCalculator';
 import { getEducationContent } from '../utils/assetEducation';
 import './GameScreen.css';
@@ -510,7 +510,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   }, [networthData, onNetworthCalculated]);
 
   // Check if game has ended
-  const isGameEnded = !gameState.isStarted && gameState.currentYear === 20;
+  // Use TOTAL_GAME_YEARS so detection remains correct even if constants change
+  const isGameEnded = !gameState.isStarted && gameState.currentYear >= TOTAL_GAME_YEARS;
+
+  // Debug: log end detection (dev-only)
+  if (isGameEnded) {
+    console.debug('GameScreen: detected game end', { isStarted: gameState.isStarted, currentYear: gameState.currentYear, currentMonth: gameState.currentMonth, mode: gameState.mode });
+  }
 
   // If game ended, show end screen
   if (isGameEnded) {
@@ -518,6 +524,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       <GameEndScreen
         gameState={gameState}
         isMultiplayer={showLeaderboard}
+        assetDataMap={assetDataMap}
+        calendarYear={calendarYear}
         leaderboardData={leaderboardData}
         onReturnToMenu={onReturnToMenu || (() => window.location.reload())}
       />
@@ -611,9 +619,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             }
           }
 
-          // Calculate percentage gain/loss based on starting cash (₹1,00,000)
-          const gainFromStart = netWorth - STARTING_CASH;
-          const gainPercentage = (gainFromStart / STARTING_CASH) * 100;
+          // Calculate percentage gain/loss based on actual starting cash (custom or default ₹1,00,000)
+          const actualStartingCash = gameState.adminSettings?.initialPocketCash || STARTING_CASH;
+          const gainFromStart = netWorth - actualStartingCash;
+          const gainPercentage = (gainFromStart / actualStartingCash) * 100;
 
           return (
             <div className="net-worth">
@@ -685,6 +694,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                     fixedDeposits={gameState.fixedDeposits}
                     pocketCash={gameState.pocketCash}
                     currentRates={currentFDRates}
+                    currentYear={currentYear}
+                    currentMonth={gameState.currentMonth}
                     onCreate={onCreateFD}
                     onCollect={onCollectFD}
                     onBreak={onBreakFD}
@@ -888,6 +899,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       <AssetEducationModal
         isOpen={showEducationModal}
         content={currentQuizCategory ? getEducationContent(currentQuizCategory) : null}
+        questionIndex={currentQuizCategory && gameState.quizQuestionIndices ? gameState.quizQuestionIndices[currentQuizCategory] : undefined}
         onComplete={handleQuizComplete}
       />
     </div>

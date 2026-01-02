@@ -100,8 +100,15 @@ export const TradeableAssetCard: React.FC<TradeableAssetCardProps> = ({
   // Get asset info for tooltip (works for all asset types)
   const assetInfo = getAssetInfo(name);
 
+  // Calculate P/L
+  const totalPL = holding.avgPrice > 0 && holding.quantity > 0
+    ? (currentPrice - holding.avgPrice) * holding.quantity
+    : 0;
+  const isProfit = totalPL >= 0;
+
   return (
     <div className={`asset-card tradeable-card ${isStock ? 'stock-card' : ''} ${isShaking ? 'shake' : ''}`}>
+      {/* Row 1: Stock Name */}
       <div className="asset-tooltip-wrapper">
         <h3 className="card-title">{name}</h3>
         <div className="asset-tooltip">
@@ -111,49 +118,44 @@ export const TradeableAssetCard: React.FC<TradeableAssetCardProps> = ({
         </div>
       </div>
 
-      <div className="chart-container">
-        <MiniChart data={priceHistory} isPositive={isPositive} />
+      {/* Row 2: Current Price (left) & Price Change % (right) */}
+      <div className="row-2-price-change">
+        <span className={`current-price-large ${isPositive ? 'positive' : 'negative'}`}>
+          ₹{currentPrice.toFixed(2)}
+        </span>
+        {/* show unit if provided */}
+        {unit && <small className="price-unit">{unit}</small>}
+        <span className={`price-change-percent ${isPositive ? 'positive' : 'negative'}`}>
+          {isPositive ? '▲' : '▼'} {Math.abs(priceChangePercent).toFixed(2)}%
+        </span>
       </div>
 
-      <div className="price-info">
-        <div className="current-price">
-          <span className="price-label">Curr. ₹{unit}</span>
-          <span className={`price-value ${isPositive ? 'positive' : 'negative'}`}>
-            ₹{currentPrice.toFixed(2)}
-          </span>
-          <span className={`price-change ${isPositive ? 'positive' : 'negative'}`}>
-            {isPositive ? '▲' : '▼'} {Math.abs(priceChangePercent).toFixed(2)}%
-          </span>
+      {/* Row 3: P&L (prominent) with AVG & QTY on hover */}
+      <div className="row-3-stats">
+        {/* Default: Show only P&L prominently */}
+        <div className={`stat-item-main ${isProfit ? 'profit' : 'loss'}`}>
+          <span className="stat-label">P&L</span>
+          <span className="stat-value-main">{isProfit ? '+' : ''}₹{totalPL.toFixed(2)}</span>
         </div>
-        <div className="holding-info">
-          <div className="holdings-container">
-            <div className="holdings-left">
-              <div className="holding-row">
-                <span className="holding-label">Holdings:</span>
-                <span className="holding-value">{holding.quantity.toFixed(2)}</span>
-              </div>
-              <div className="holding-row">
-                <span className="holding-label">AVG. Price:</span>
-                <span className="holding-value">₹{holding.avgPrice > 0 ? holding.avgPrice.toFixed(2) : '-'}</span>
-              </div>
-            </div>
-            {holding.avgPrice > 0 && holding.quantity > 0 && (
-              <div className="holdings-right">
-                {(() => {
-                  const totalPL = (currentPrice - holding.avgPrice) * holding.quantity;
-                  const plPercent = ((currentPrice - holding.avgPrice) / holding.avgPrice) * 100;
-                  const isProfit = totalPL >= 0;
-                  return (
-                    <div className={`pl-display ${isProfit ? 'profit' : 'loss'}`}>
-                      <div className="pl-amount">{isProfit ? '+' : ''}₹{totalPL.toFixed(2)}</div>
-                      <div className="pl-percent">{isProfit ? '+' : ''}{plPercent.toFixed(2)}%</div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
+            <div className="stat-item">
+            <span className="stat-label">QTY</span>
+            <span className="stat-value">{holding.quantity > 0 ? holding.quantity.toFixed(0) : '--'}</span>
           </div>
+
+        {/* Hover: Show all three stats */}
+        <div className="stat-details">
+
+          <div className="stat-item">
+            <span className="stat-label">AVG</span>
+            <span className="stat-value">{holding.avgPrice > 0 ? `₹${holding.avgPrice.toFixed(2)}` : '--'}</span>
+          </div>
+
         </div>
+      </div>
+
+      {/* Row 4-7: Chart */}
+      <div className="chart-container">
+        <MiniChart data={priceHistory} isPositive={isPositive} />
       </div>
 
       {mode !== 'none' && (
@@ -176,22 +178,24 @@ export const TradeableAssetCard: React.FC<TradeableAssetCardProps> = ({
           >
             10
           </button>
-          <input
-            type="number"
-            className="qty-input"
-            value={customQuantity}
-            onChange={(e) => setCustomQuantity(e.target.value)}
-            placeholder="Custom"
-          />
-          <button
-            className="qty-btn max-qty-btn"
-            onClick={() => {
-              setCustomQuantity(maxQuantity.toString());
-              setSelectedQuantity(0);
-            }}
-          >
-            MAX
-          </button>
+          <div className="input-container">
+            <input
+              type="number"
+              className="qty-input"
+              value={customQuantity}
+              onChange={(e) => setCustomQuantity(e.target.value)}
+              placeholder="Custom"
+            />
+            <button
+              className="max-button"
+              onClick={() => {
+                setCustomQuantity(maxQuantity.toString());
+                setSelectedQuantity(0);
+              }}
+            >
+              MAX
+            </button>
+          </div>
         </div>
       )}
 

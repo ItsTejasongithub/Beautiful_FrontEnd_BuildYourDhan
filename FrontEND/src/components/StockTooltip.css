@@ -19,7 +19,7 @@
   border-radius: 8px;
   border: 2px solid #D4A574;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  z-index: 9999;
   min-width: 280px;
   max-width: 320px;
   opacity: 0;
@@ -27,6 +27,7 @@
   transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
   pointer-events: none;
   text-align: left;
+  white-space: normal;
 }
 
 .asset-tooltip-wrapper:hover .asset-tooltip,

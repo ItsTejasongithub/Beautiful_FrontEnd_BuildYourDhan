@@ -4,6 +4,8 @@ export interface AdminSettings {
   selectedCategories: string[];
   gameStartYear: number;
   hideCurrentYear: boolean;
+  initialPocketCash: number; // Starting pocket cash amount
+  recurringIncome: number; // Amount added to pocket cash every 6 months
 }
 
 export interface PlayerInfo {
@@ -54,6 +56,7 @@ export interface GameState {
   selectedAssets?: any;
   assetUnlockSchedule?: any;
   yearlyQuotes?: string[];
+  quizQuestionIndices?: { [category: string]: number }; // Random question index per category
 }
 
 // Socket event types

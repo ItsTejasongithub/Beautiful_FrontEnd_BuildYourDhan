@@ -46,9 +46,15 @@ export const HostSpectatorView: React.FC = () => {
       {/* Header */}
       <div className="spectator-header">
         <div className="game-info">
-          <h1>BULLRUN - HOST VIEW</h1>
+          <h1>BULL RUN  HOST VIEW</h1>
           <p className="room-code">Room: {roomInfo.roomId}</p>
         </div>
+
+        {/* Logo in the center */}
+        <div className="logo-container">
+          <img src="/BullRun_Icon.png" alt="Bull Run Logo" className="game-logo" />
+        </div>
+
         <div className="game-timer">
           <div className="timer-item">
             <span className="timer-label">Game Year</span>
@@ -116,7 +122,7 @@ export const HostSpectatorView: React.FC = () => {
                     ) : player.quizStatus.currentQuiz ? (
                       <span className="quiz-active">📝 Active Quiz</span>
                     ) : (
-                      <span className="quiz-ready">🎮 Playing</span>
+                      <span className="quiz-ready">In Game</span>
                     )}
                   </div>
 
